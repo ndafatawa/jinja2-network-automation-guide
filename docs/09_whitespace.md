@@ -1,257 +1,281 @@
-09 – Whitespace Control in Jinja2
+# **09 – Whitespace Control in Jinja2**
 
-Whitespace control is one of the most overlooked but most important parts of building stable and predictable network configuration templates.
-This document explains what whitespace control is, why it matters, and how to use it properly.
+Whitespace control is one of the most overlooked but most important aspects of building stable and predictable network configuration templates.  
+This chapter explains **what whitespace control is**, **why it matters**, and **how to use it correctly** in network automation.
 
-9.1 Why Whitespace Matters in Network Automation
+---
 
-When generating network configurations using Jinja2, uncontrolled whitespace can cause:
+# **9.1 Why Whitespace Matters in Network Automation**
 
-    blank lines in unexpected places
+Uncontrolled whitespace in generated configs can cause:
 
-    extra spaces
+- random blank lines  
+- misaligned configuration  
+- inconsistent indentation  
+- noisy Git diffs  
+- configuration drift  
+- failing compliance checks  
 
-    differences in indentation
+Network automation requires configs to be:
 
-    unstable diffs in Git
+- **deterministic**  
+- **clean**  
+- **consistent**  
+- **diff-friendly**  
 
-    inconsistent output across devices
+Whitespace control ensures your configs are predictable across all devices.
 
-    “noisy” reviews during change approval
+---
 
-This leads to:
-
-    mistakes
-
-    misalignment
-
-    failing compliance checks
-
-    configuration drift
-
-Whitespace control ensures that generated configs are:
-
-    deterministic
-
-    clean
-
-    consistent
-
-    diff-friendly
-
-For large deployments, this becomes extremely important.
-
-9.2 How Jinja2 Handles Whitespace by Default
+# **9.2 How Jinja2 Handles Whitespace by Default (Not Good)**
 
 By default, Jinja2:
 
-    keeps your indentation
+- preserves indentation  
+- keeps blank lines  
+- inserts newlines around `{% block %}`  
+- inserts newlines around loops  
+- inserts newlines around if-statements  
+- prints whitespace literally  
 
-    keeps blank lines
+This **produces messy configs** full of random blank lines.
 
-    prints a newline around every {% block %} and {% endblock %}
+---
 
-    prints newlines around logic statements
+# **9.3 Enabling Whitespace Control in Python (`render.py`)**
 
-    does not strip empty lines created by loops
+A proper renderer must enable:
 
-    treats spaces literally
+```python
+env = Environment(
+    loader=FileSystemLoader(str(TPL)),
+    trim_blocks=True,
+    lstrip_blocks=True,
+    undefined=StrictUndefined
+)
+```
 
-This is NOT what we want for network configs.
+### What these do:
 
-9.3 Enabling Whitespace Control in Python (render.py)
+**trim_blocks=True**  
+Removes the newline after a Jinja block.
 
-A proper renderer sets:
+**lstrip_blocks=True**  
+Removes leading indentation before Jinja statements.
 
-    env = Environment(
-        loader=FileSystemLoader(str(TPL)),
-        trim_blocks=True,
-        lstrip_blocks=True,
-        undefined=StrictUndefined,
-    )
+Together, they produce **clean**, **predictable**, **production-ready** configs.
 
+---
 
-These two flags are critical:
+# **9.4 Using “-%}” to Control Whitespace Inside Templates**
 
-    trim_blocks=True
+Sometimes, you must remove whitespace *inside* a template manually.
 
-Removes newline after Jinja2 blocks:
-
-    {% if ... %}  <-- no blank line inserted
-Actual config line here
-
-    lstrip_blocks=True
-
-Strips indentation before a control block:
-
-      {% for x in xs %}
-no leading spaces on this line
-
-
-These two settings produce clean, predictable output.
-
-9.4 Controlling Whitespace Directly Inside Templates Using “-%}”
-
-Sometimes you want to suppress whitespace for a particular line.
 Use:
 
-    -%}
-
+```
+-%}
+```
 
 instead of:
 
-    %}
-
+```
+%}
+```
 
 Example:
 
-    {% for v in vlans -%}
-    vlan {{ v.id }}
-      name {{ v.name }}
-    {%- endfor %}
-    
+```jinja2
+{% for v in vlans -%}
+vlan {{ v.id }}
+  name {{ v.name }}
+{%- endfor %}
+```
 
-This produces:
+Output:
 
-    vlan 10
-      name PROD
-    vlan 20
-      name USERS
+```
+vlan 10
+  name PROD
+vlan 20
+  name USERS
+```
 
+✔ No blank lines  
+✔ Perfect diff output  
 
-Notice:
+---
 
-    no blank lines between entries
+# **9.5 Clean Loop Example (Before vs After)**
 
-    clean spacing
-
-    deterministic config
-
-9.5 Clean Loop Example (Before vs After)
-Without whitespace control:
+### **Without whitespace control**
 
 Template:
 
-    {% for v in vlans %}
-    vlan {{ v.id }}
-      name {{ v.name }}
-    {% endfor %}
-
-
-Output:
-
-    vlan 10
-      name PROD
-    
-    vlan 20
-      name USERS
-    
-
-
-There are blank lines between entries.
-
-With whitespace control:
-    {% for v in vlans -%}
-    vlan {{ v.id }}
-      name {{ v.name }}
-    {%- endfor %}
-
+```jinja2
+{% for v in vlans %}
+vlan {{ v.id }}
+  name {{ v.name }}
+{% endfor %}
+```
 
 Output:
 
-    vlan 10
-      name PROD
-    vlan 20
-      name USERS
+```
+vlan 10
+  name PROD
 
+vlan 20
+  name USERS
+```
 
-Exactly what you want.
+Blank line appears between entries.
 
-9.6 Clean Conditional Blocks
+### **With whitespace control**
 
-Uncontrolled conditional blocks often produce empty lines:
+```jinja2
+{% for v in vlans -%}
+vlan {{ v.id }}
+  name {{ v.name }}
+{%- endfor %}
+```
 
-    {% if vrf.l3vni %}
-    router bgp 65001
-      address-family l2vpn evpn
-    {% endif %}
+Output:
 
+```
+vlan 10
+  name PROD
+vlan 20
+  name USERS
+```
 
-If vrf.l3vni is not defined, the template prints a blank line.
+Perfect, stable formatting.
 
-Fix using -%}:
-    {% if vrf.l3vni -%}
-    router bgp 65001
-      address-family l2vpn evpn
-    {%- endif %}
+---
 
+# **9.6 Clean Conditional Blocks**
 
-Now nothing is printed if condition is false.
+Problem:
 
-9.7 Avoiding Extra Blank Lines at the Start or End of Files
+```jinja2
+{% if vrf.l3vni %}
+router bgp 65001
+  address-family l2vpn evpn
+{% endif %}
+```
 
-Wrap top-level blocks tightly:
+If the condition is false, a **blank line** appears.
 
-    {%- extends 'nxos/device_base.j2' -%}
+Solution:
 
+```jinja2
+{% if vrf.l3vni -%}
+router bgp 65001
+  address-family l2vpn evpn
+{%- endif %}
+```
+
+If condition is false → **no output at all**.
+
+---
+
+# **9.7 Avoiding Blank Lines at Start/End of Files**
+
+Wrap inheritance tightly:
+
+```jinja2
+{%- extends 'nxos/device_base.j2' -%}
+```
 
 or:
 
-    {%- block base -%}
-    ...
-    {%- endblock %}
-    
+```jinja2
+{%- block base -%}
+...
+{%- endblock %}
+```
 
-The leading/trailing whitespace is eliminated.
+This prevents leading/trailing blank lines in generated configs.
 
-9.8 Whitespace Control for Multiline Jinja Blocks
+---
 
-Consider a large include:
+# **9.8 Whitespace Control for Includes**
 
-    {% include 'nxos/underlay_intf.j2' %}
+Default include:
 
+```jinja2
+{% include 'nxos/underlay_intf.j2' %}
+```
 
-It may result in unwanted blank lines above/below the included text.
+Often creates extra blank lines.
 
-Use:
+Correct:
 
-    {%- include 'nxos/underlay_intf.j2' -%}
+```jinja2
+{%- include 'nxos/underlay_intf.j2' -%}
+```
 
+✔ Removes whitespace before and after include  
+✔ Produces consistent output  
 
-This trims whitespace before and after the include.
+---
 
-9.9 Best Practices for Whitespace Control in Network Templates
-1. Always enable trim_blocks and lstrip_blocks in the Python renderer.
-2. Use -%} for loops, if-else, includes, and blocks wherever blank lines are not wanted.
-3. Avoid adding trailing spaces in templates.
-4. Keep indentation consistent.
-5. Use linters or diff tools to enforce clean output.
-6. Render a sample of multiple devices to confirm whitespace consistency.
-9.10 Examples from Real Projects
-VXLAN VNI list
-    {% for v in l2_vnis -%}
-    member vni {{ v.vni }}
-      mcast-group {{ v.mcast_group }}
-    {%- endfor %}
+# **9.9 Best Practices for Whitespace Control**
 
-ACL entries
-    {% for rule in rules -%}
-    {{ rule.action }} {{ rule.src }} {{ rule.dst }} eq {{ rule.port }}
-    {%- endfor %}
+1. **Always enable** `trim_blocks` and `lstrip_blocks` in Python.  
+2. Use `-%}` in loops, conditionals, blocks, and includes.  
+3. Avoid trailing spaces in templates.  
+4. Keep indentation consistent.  
+5. Render multiple sample configs to verify consistency.  
+6. Maintain deterministic output (important for Git).  
 
-BGP neighbors
-    router bgp {{ asn }}
-    {% for nbr in neighbors -%}
-      neighbor {{ nbr.ip }} remote-as {{ nbr.asn }}
-    {%- endfor %}
+---
 
+# **9.10 Real Project Examples**
 
-All clean, no extra whitespace.
+### **VXLAN L2VNI Members**
 
-9.11 Common Mistakes to Avoid
-Mistake	Result
-Missing -%}	Extra blank lines
-Using tabs instead of spaces	Misaligned configs
-Adding empty lines between blocks	Unstable diffs
-No trim/lstrip in renderer	Hard-to-read output
-Putting logic-heavy structures inside templates	Loss of readability
+```jinja2
+{% for v in l2_vnis -%}
+member vni {{ v.vni }}
+  mcast-group {{ v.mcast_group }}
+{%- endfor %}
+```
+
+---
+
+### **ACL Entries**
+
+```jinja2
+{% for rule in rules -%}
+{{ rule.action }} {{ rule.src }} {{ rule.dst }} eq {{ rule.port }}
+{%- endfor %}
+```
+
+---
+
+### **BGP Neighbors**
+
+```jinja2
+router bgp {{ asn }}
+{% for n in neighbors -%}
+  neighbor {{ n.ip }} remote-as {{ n.asn }}
+{%- endfor %}
+```
+
+---
+
+# **9.11 Common Mistakes (Avoid These)**
+
+| Mistake | Result |
+|--------|--------|
+| Missing `-%}` | Extra blank lines everywhere |
+| No `trim_blocks` / `lstrip_blocks` | Messy spacing |
+| Logic-heavy templates | Hard to maintain |
+| Using tabs instead of spaces | Misaligned configs |
+| Blank lines between includes | Unstable Git diffs |
+
+---
+
+Whitespace control is not optional — it is essential for clean, predictable, production-ready network automation templates.
+
