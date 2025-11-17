@@ -1,1 +1,586 @@
 
+# **17 – Real-World Hands-On Labs (Step-By-Step Practical Exercises)**
+
+These labs are designed to take you from **basic rendering** → **multi-device EVPN fabric generation** → **firewall automation** → **validation**.
+
+Each lab is **independent**, **realistic**, and **directly applicable** in production.
+
+You can complete them in order or jump between them.
+
+---
+
+# **17.1 Lab 1 – Render a Simple Hostname Template**
+
+### **Goal**
+Learn how to render a basic Jinja2 template with a single variable.
+
+### **Files**
+
+**template:**
+```jinja2
+hostname {{ hostname }}
+```
+
+**python:**
+```python
+from jinja2 import Template
+
+tpl = Template(open("hostname.j2").read())
+print(tpl.render(hostname="leaf01"))
+```
+
+### **Expected Output**
+```
+hostname leaf01
+```
+
+---
+
+# **17.2 Lab 2 – Add YAML Input**
+
+### **Goal**
+Switch from hardcoded variables → YAML-driven automation.
+
+### **YAML (device.yml):**
+```yaml
+hostname: leaf01
+mgmt_ip: 172.16.10.11/24
+```
+
+### **template:**
+```jinja2
+hostname {{ hostname }}
+interface mgmt0
+  ip address {{ mgmt_ip }}
+```
+
+### **python:**
+```python
+import yaml
+from jinja2 import Template
+
+data = yaml.safe_load(open("device.yml"))
+tpl = Template(open("mgmt_template.j2").read())
+print(tpl.render(data))
+```
+
+---
+
+# **17.3 Lab 3 – Loop VLANs from YAML**
+
+### **Goal**
+Generate VLAN config dynamically.
+
+### **YAML (vlans.yml):**
+```yaml
+vlans:
+  - { id: 10, name: Servers }
+  - { id: 20, name: Users }
+  - { id: 30, name: DMZ }
+```
+
+### **template:**
+```jinja2
+{% for v in vlans %}
+vlan {{ v.id }}
+  name {{ v.name }}
+{% endfor %}
+```
+
+### **python:**
+```python
+data = yaml.safe_load(open("vlans.yml"))
+tpl = Template(open("vlan_template.j2").read())
+print(tpl.render(data))
+```
+
+---
+
+# **17.4 Lab 4 – Render Device Inventory (Multiple Devices)**
+
+### **Goal**
+Use YAML list to generate config per device.
+
+### **YAML (devices.yml):**
+```yaml
+devices:
+  - hostname: leaf01
+    mgmt_ip: 172.16.10.11/24
+  - hostname: leaf02
+    mgmt_ip: 172.16.10.12/24
+```
+
+### **python:**
+```python
+import yaml, jinja2
+
+devices = yaml.safe_load(open("devices.yml"))["devices"]
+tpl = jinja2.Template(open("hostname.j2").read())
+
+for dev in devices:
+    out = tpl.render(dev)
+    open(f"build/{dev['hostname']}.cfg", "w").write(out)
+```
+
+---
+
+# **17.5 Lab 5 – Underlay Interface Generation (Point-to-Point)**
+
+### **Goal**
+Render underlay links using loops.
+
+### **YAML:**
+```yaml
+underlay:
+  - { iface: "Ethernet1/1", ip: "10.0.0.1/31", desc: "to spine01" }
+  - { iface: "Ethernet1/2", ip: "10.0.0.3/31", desc: "to spine02" }
+```
+
+### **template:**
+```jinja2
+{% for u in underlay %}
+interface {{ u.iface }}
+  description {{ u.desc }}
+  no switchport
+  mtu 9216
+  ip address {{ u.ip }}
+  ip ospf network point-to-point
+  no shutdown
+{% endfor %}
+```
+
+---
+
+# **17.6 Lab 6 – Interface Modes (Access + Trunk)**
+
+### **YAML:**
+```yaml
+interfaces:
+  - { name: "Eth1/1", mode: "access", vlan: 10 }
+  - { name: "Eth1/2", mode: "trunk", allowed: [10,20,30] }
+```
+
+### **template:**
+```jinja2
+{% for intf in interfaces %}
+interface {{ intf.name }}
+  switchport mode {{ intf.mode }}
+
+  {% if intf.mode == 'access' %}
+  switchport access vlan {{ intf.vlan }}
+  {% else %}
+  switchport trunk allowed vlan {{ intf.allowed | join(',') }}
+  {% endif %}
+
+  no shutdown
+{% endfor %}
+```
+
+---
+
+# **17.7 Lab 7 – Build a Base/Leaf/Spine Template Structure**
+
+### **Goal**
+Use inheritance and includes.
+
+### **device_base.j2**
+```jinja2
+hostname {{ hostname }}
+
+{% block underlay %}{% endblock %}
+{% block overlay %}{% endblock %}
+{% block services %}{% endblock %}
+```
+
+### **leaf.j2**
+```jinja2
+{% extends 'device_base.j2' %}
+
+{% block underlay %}
+{% include 'underlay_intf.j2' %}
+{% endblock %}
+
+{% block overlay %}
+{% include 'overlay_leaf_evpn.j2' %}
+{% endblock %}
+```
+
+### **python renderer:**
+```python
+env = jinja2.Environment(
+    loader=jinja2.FileSystemLoader("templates"),
+    trim_blocks=True,
+    lstrip_blocks=True
+)
+tpl = env.get_template("leaf.j2")
+print(tpl.render(context))
+```
+
+---
+
+# **17.8 Lab 8 – Generate VXLAN VNI Mappings**
+
+### **YAML:**
+```yaml
+vlans:
+  - { id: 10, name: "Servers", vni: 10100 }
+  - { id: 20, name: "Users",   vni: 10200 }
+```
+
+### **template:**
+```jinja2
+{% for v in vlans %}
+vlan {{ v.id }}
+  name {{ v.name }}
+  vn-segment {{ v.vni }}
+{% endfor %}
+```
+
+---
+
+# **17.9 Lab 9 – NVE Interface with L2VNIs**
+
+### **template:**
+```jinja2
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback1
+
+{% for v in vlans %}
+  member vni {{ v.vni }}
+    ingress-replication protocol bgp
+{% endfor %}
+```
+
+---
+
+# **17.10 Lab 10 – Custom Filter: cidr_to_ipmask (FortiGate use-case)**
+
+### **Goal**
+Convert CIDR → IP + Mask.
+
+### **python:**
+```python
+import ipaddress
+def cidr_to_ipmask(cidr):
+    ip = ipaddress.ip_interface(cidr)
+    return f"{ip.ip} {ip.network.netmask}"
+
+env.filters['cidr_to_ipmask'] = cidr_to_ipmask
+```
+
+### **template:**
+```jinja2
+set subnet {{ obj.subnet | cidr_to_ipmask }}
+```
+
+---
+
+# **17.11 Lab 11 – Generate FortiGate Address Objects from CSV**
+
+### **CSV (addresses.csv):**
+```
+name,subnet
+App01,10.1.1.1/32
+App02,10.1.1.2/32
+```
+
+### **python:**
+```python
+import csv
+rows = list(csv.DictReader(open("addresses.csv")))
+tpl = env.get_template("fortigate_addr.j2")
+print(tpl.render(objects=rows))
+```
+
+### **template:**
+```jinja2
+{% for o in objects %}
+config firewall address
+  edit "{{ o.name }}"
+    set subnet {{ o.subnet | cidr_to_ipmask }}
+  next
+end
+{% endfor %}
+```
+
+---
+
+# **17.12 Lab 12 – Build a Multi-Device Fabric (Full Project)**
+
+### **Goal**
+Render full configs for dozens of devices.
+
+### **Steps**
+1. Put inventory in `data/devices.yml`  
+2. Put fabric-wide settings in `data/fabric.yml`  
+3. Put VLANs in `data/vlans.csv`  
+4. Write templates  
+5. Write render.py to:
+   - load YAML
+   - load CSV
+   - merge data per device
+   - choose leaf/spine template
+   - write output files
+
+This models real EVPN deployments.
+
+---
+
+# **17.13 Lab 13 – Detect Missing Variables (StrictUndefined)**
+
+Turn on strict mode:
+
+```python
+undefined=jinja2.StrictUndefined
+```
+
+Now test:
+
+- missing mgmt_ip  
+- missing VLAN name  
+- missing VRF RT  
+
+You will get safe, descriptive errors that prevent bad configs.
+
+---
+
+# **17.14 Lab 14 – Validate Context Before Rendering**
+
+### **Goal**
+Protect automation from invalid data.
+
+### **Validation examples:**
+```python
+assert 'hostname' in dev
+assert isinstance(dev['vlans'], list)
+assert all('id' in v for v in dev['vlans'])
+```
+
+Try removing VLAN ID from YAML and observe error.
+
+---
+
+# **17.15 Lab 15 – Add Whitespace Controls (-%})**
+
+### **Goal**
+Clean, deterministic output.
+
+Modify your loops:
+
+```jinja2
+{% for v in vlans -%}
+vlan {{ v.id }}
+  name {{ v.name }}
+{%- endfor %}
+```
+
+Compare before/after in Git diff.
+
+---
+
+# **17.16 Lab 16 – Add set for Complex Expressions**
+
+### **Goal**
+Reduce complexity in templates.
+
+Example:
+
+```jinja2
+{% set trunk = intf.allowed_vlans | unique | sort | join(',') %}
+switchport trunk allowed vlan {{ trunk }}
+```
+
+Render with real interface data.
+
+---
+
+# **17.17 Lab 17 – Build EVPN Route-Target Logic Using Filters**
+
+### **YAML:**
+```yaml
+fabric_as: 65000
+vrf:
+  l3vni: 10010
+```
+
+### **python:**
+```python
+def vni_rt(vni, asn):
+    return f"{asn}:{vni}"
+
+env.filters['vni_rt'] = vni_rt
+```
+
+### **template:**
+```jinja2
+route-target import {{ vrf.l3vni | vni_rt(fabric_as) }} evpn
+```
+
+---
+
+# **17.18 Lab 18 – Render ALL Configs in build/**
+
+### **python:**
+```python
+for dev in devices:
+    template_name = f"nxos/{dev['role']}.j2"
+    tpl = env.get_template(template_name)
+    config = tpl.render(dev)
+    open(f"build/{dev['hostname']}.cfg", "w").write(config)
+```
+
+Run:
+
+```
+python3 render.py
+```
+
+Inspect:
+
+```
+build/leaf01.cfg  
+build/leaf02.cfg  
+build/spine01.cfg  
+```
+
+---
+
+# **17.19 Lab 19 – Push Config to Device (Netmiko)**
+
+### **python:**
+```python
+from netmiko import ConnectHandler
+
+device = {
+  "device_type": "cisco_nxos",
+  "host": "172.16.10.11",
+  "username": "admin",
+  "password": "Cisco123"
+}
+
+cfg = open("build/leaf01.cfg").read()
+
+with ConnectHandler(**device) as conn:
+    conn.send_config_set(cfg.splitlines())
+```
+
+Run against your test lab.
+
+---
+
+# **17.20 Lab 20 – Configuration Compliance Verification**
+
+### **Goal**
+Compare rendered config with running config.
+
+### **python:**
+```python
+running = conn.send_command("show running-config")
+generated = open("build/leaf01.cfg").read()
+
+if running != generated:
+    print("❌ Config drift detected")
+else:
+    print("✔ Config matches")
+```
+
+---
+
+# **17.21 Lab 21 – Use pytest for Template Testing**
+
+### **test:**
+```python
+def test_vlan_names_exist():
+    ctx = yaml.safe_load(open("data/devices.yml"))['devices'][0]
+    for v in ctx['vlans']:
+        assert 'name' in v
+```
+
+Run:
+
+```
+pytest
+```
+
+---
+
+# **17.22 Lab 22 – Generate Output for Multiple Vendors**
+
+### **Goal**
+Use same VLAN YAML → generate both NX-OS and EOS configs.
+
+### **python:**
+```python
+if dev['os'] == 'nxos':
+    tpl = env.get_template("nxos/leaf.j2")
+elif dev['os'] == 'eos':
+    tpl = env.get_template("eos/leaf_vlan_demo.j2")
+```
+
+This is real multi-vendor automation.
+
+---
+
+# **17.23 Lab 23 – Build a FortiGate Policy Automation Engine**
+
+### **CSV (rules.csv):**
+```
+src,dst,service,action
+Servers,Internet,HTTPS,allow
+Users,Internet,DNS,allow
+```
+
+### **template:**
+```jinja2
+{% for r in rules %}
+config firewall policy
+  edit 0
+    set srcaddr "{{ r.src }}"
+    set dstaddr "{{ r.dst }}"
+    set service "{{ r.service }}"
+    set action {{ r.action }}
+  next
+end
+{% endfor %}
+```
+
+---
+
+# **17.24 Lab 24 – Render Excel Data with pandas**
+
+### **python:**
+```python
+import pandas as pd
+df = pd.read_excel("vlans.xlsx")
+rows = df.to_dict('records')
+tpl = env.get_template("vlan_template.j2")
+print(tpl.render(vlans=rows))
+```
+
+Works for firewall objects, NAT, VRF lists, etc.
+
+---
+
+# **17.25 Lab 25 – Build End-to-End EVPN Fabric Generator**
+
+This is your final project.
+
+Steps:
+
+1. **Fabric YAML** – ASN, NVE source loopback, replication mode  
+2. **Device YAML** – hostname, role, mgmt IP, loopbacks  
+3. **Underlay CSV** – all P2P links  
+4. **VLAN CSV** – VLAN→VNI assignments  
+5. **Templates** – base, leaf, spine, includes, macros  
+6. **render.py** – merge all data  
+7. **Output** – build/<device>.cfg  
+8. **Push** – Netmiko or API  
+9. **Validate** – compliance check  
+10. **Git** – deterministic diffs  
+
+With this, you can automate an entire data center.
+
+---
+
