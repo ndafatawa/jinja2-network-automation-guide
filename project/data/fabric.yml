@@ -1,1 +1,11 @@
+fabric_as: 65001
+replication: bgp
+mtu: 9216
+nve_source_loopback: 1
+
+underlay_links:
+  - { local: leaf01, intf: Ethernet1/1, ip: 10.0.0.1/31 }
+  - { local: leaf01, intf: Ethernet1/2, ip: 10.0.0.3/31 }
+  - { local: leaf02, intf: Ethernet1/1, ip: 10.0.0.5/31 }
+  - { local: leaf02, intf: Ethernet1/2, ip: 10.0.0.7/31 }
 
