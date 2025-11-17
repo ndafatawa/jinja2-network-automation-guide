@@ -114,23 +114,23 @@ The Jinja template can access this as:
 
 YAML is used for:
 
-  Per-device data
-
-  Per-fabric data
-
-  Hierarchical settings
+    Per-device data
+  
+    Per-fabric data
+  
+    Hierarchical settings
 
 CSV is used for:
 
-  Long flat lists
-
-  VLAN tables
-
-  Address objects
-
-  Firewall rules
-
-  Services
+    Long flat lists
+  
+    VLAN tables
+  
+    Address objects
+  
+    Firewall rules
+  
+    Services
 
 This separation is standard across automation projects.
 
@@ -138,19 +138,19 @@ This separation is standard across automation projects.
 
 Python:
 
-Loads the YAML/CSV
-
-Validates data
-
-Applies custom filters
-
-Selects templates per role (leaf/spine/firewall)
-
-Renders the final config
-
-Writes files to /build/
-
-This glue logic lives in scripts/render.py.
+  Loads the YAML/CSV
+  
+  Validates data
+  
+  Applies custom filters
+  
+  Selects templates per role (leaf/spine/firewall)
+  
+  Renders the final config
+  
+  Writes files to /build/
+  
+  This glue logic lives in scripts/render.py.
 
 1.8 Jinja2’s Purpose in Network Automation
 
