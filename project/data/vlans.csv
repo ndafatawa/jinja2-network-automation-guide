@@ -1,1 +1,6 @@
+device,vlan_id,name,vni,ip
+leaf01,10,Servers,10100,10.10.10.1/24
+leaf01,20,Users,10200,10.10.20.1/24
+leaf02,10,Servers,10100,10.10.10.2/24
+leaf02,30,DMZ,10300,10.10.30.1/24
 
