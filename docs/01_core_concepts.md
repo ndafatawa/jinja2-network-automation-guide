@@ -12,10 +12,10 @@ A template is a configuration file that contains:
 
 Example:
 
-  hostname {{ hostname }}
-
-  interface Ethernet1/1
-    ip address {{ loopback0 }}
+    hostname {{ hostname }}
+  
+    interface Ethernet1/1
+      ip address {{ loopback0 }}
 
 
 Templates allow you to generate many configs from one template.
