@@ -1,1 +1,7 @@
+{% macro svi(id, ip) %}
+interface vlan {{ id }}
+  ip address {{ ip }}
+  fabric forwarding anycast-gateway
+  no shutdown
+{% endmacro %}
 
