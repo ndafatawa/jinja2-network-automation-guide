@@ -7,37 +7,37 @@ This document explains what whitespace control is, why it matters, and how to us
 
 When generating network configurations using Jinja2, uncontrolled whitespace can cause:
 
-blank lines in unexpected places
+    blank lines in unexpected places
 
-extra spaces
+    extra spaces
 
-differences in indentation
+    differences in indentation
 
-unstable diffs in Git
+    unstable diffs in Git
 
-inconsistent output across devices
+    inconsistent output across devices
 
-“noisy” reviews during change approval
+    “noisy” reviews during change approval
 
 This leads to:
 
-mistakes
+    mistakes
 
-misalignment
+    misalignment
 
-failing compliance checks
+    failing compliance checks
 
-configuration drift
+    configuration drift
 
 Whitespace control ensures that generated configs are:
 
-deterministic
+    deterministic
 
-clean
+    clean
 
-consistent
+    consistent
 
-diff-friendly
+    diff-friendly
 
 For large deployments, this becomes extremely important.
 
@@ -45,17 +45,17 @@ For large deployments, this becomes extremely important.
 
 By default, Jinja2:
 
-keeps your indentation
+    keeps your indentation
 
-keeps blank lines
+    keeps blank lines
 
-prints a newline around every {% block %} and {% endblock %}
+    prints a newline around every {% block %} and {% endblock %}
 
-prints newlines around logic statements
+    prints newlines around logic statements
 
-does not strip empty lines created by loops
+    does not strip empty lines created by loops
 
-treats spaces literally
+    treats spaces literally
 
 This is NOT what we want for network configs.
 
@@ -121,11 +121,11 @@ vlan 20
 
 Notice:
 
-no blank lines between entries
+    no blank lines between entries
 
-clean spacing
+    clean spacing
 
-deterministic config
+    deterministic config
 
 9.5 Clean Loop Example (Before vs After)
 Without whitespace control:
