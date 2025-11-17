@@ -1,109 +1,110 @@
-07 – Jinja2 Macros (Reusable Configuration Blocks)
+# **07 – Jinja2 Macros (Reusable Configuration Blocks)**
 
-This document explains macros in Jinja2.
-Macros are one of the most powerful features available in configuration templating because they allow you to define reusable configuration blocks, very similar to functions in programming.
+Jinja2 **macros** are one of the most powerful features in network automation templates.  
+A macro is similar to a function: you define a reusable block of configuration and call it whenever needed.
 
-Macros help keep network automation templates:
+Macros make templates:
 
-clean
+- clean  
+- modular  
+- reusable  
+- consistent  
+- easy to maintain  
+- vendor-agnostic  
 
-modular
+---
 
-reusable
+## **7.1 What Is a Macro?**
 
-consistent across devices
+A macro is a reusable block of template code that can accept parameters.
 
-easy to maintain
+### **Syntax**
 
-7.1 What Is a Macro?
-
-A macro is a reusable block of template code that behaves like a function.
-
-You write it once and use it many times.
-
-Syntax:
-
+```jinja2
 {% macro name(param1, param2) %}
   ... body ...
 {% endmacro %}
+```
 
+### **Calling a macro**
 
-To use it:
-
+```jinja2
 {{ name(arg1, arg2) }}
+```
 
+Macros **do not print automatically** — you must call them using `{{ ... }}`.
 
-Macros do not print automatically.
-You must explicitly call them using {{ ... }}.
+---
 
-7.2 Why Network Engineers Need Macros
+## **7.2 Why Network Engineers Need Macros**
 
-Macros are used to avoid copy/paste when you have repetitive configuration blocks, such as:
+Network engineers use macros to avoid repeating configuration blocks, such as:
 
-interface templates (L3 P2P interfaces)
-
-SVIs
-
-NVE members
-
-ACL entries
-
-firewall address objects
-
-BGP neighbor stanzas
-
-OSPF interface settings
-
-VRF definitions
-
-reusable service profiles
+- P2P underlay L3 interfaces  
+- SVI templates  
+- NVE members for VXLAN  
+- ACL entries  
+- Firewall address objects  
+- BGP neighbor sections  
+- VRF definitions  
+- QoS blocks  
+- Reusable service profiles  
 
 Macros ensure:
 
-consistent formatting
+- consistent formatting  
+- less copy/paste  
+- reduced errors  
+- cleaner templates  
+- easy multi-vendor support  
 
-fewer mistakes
+---
 
-easier updates
+## **7.3 Where Macros Are Stored**
 
-cleaner templates
+Macros are typically stored in:
 
-compatibility across vendors
-
-7.3 Where Macros Are Stored
-
-Macros are usually placed in a dedicated file such as:
-
+```
 templates/misc/macros.j2
+```
 
+This keeps the project structured and easy to navigate.
 
-This keeps project structure clean and logical.
+---
 
-7.4 Simple Macro Example
+## **7.4 Simple Macro Example**
+
+### **Macro**
+
+```jinja2
 {% macro svi(id, name, ip) -%}
 interface vlan {{ id }}
   name {{ name }}
   ip address {{ ip }}
   no shutdown
 {%- endmacro %}
+```
 
+### **Usage**
 
-Call this anywhere:
-
+```jinja2
 {{ svi(10, 'Servers', '10.10.10.1/24') }}
+```
 
+### **Output**
 
-Rendered output:
-
+```
 interface vlan 10
   name Servers
   ip address 10.10.10.1/24
   no shutdown
+```
 
-7.5 Macro With Optional Parameters (Default Values)
+---
 
-Example:
+## **7.5 Macro With Optional Parameters (Default Values)**
 
+```jinja2
 {% macro p2p(intf, ip, desc='') -%}
 interface {{ intf }}
   description {{ desc }}
@@ -112,38 +113,49 @@ interface {{ intf }}
   ip address {{ ip }}
   no shutdown
 {%- endmacro %}
-
+```
 
 Call without description:
 
+```jinja2
 {{ p2p('Ethernet1/1', '10.0.0.1/31') }}
-
+```
 
 Call with description:
 
+```jinja2
 {{ p2p('Ethernet1/2', '10.0.0.3/31', 'Link to spine-02') }}
+```
 
-7.6 Importing Macros
+---
 
-To use a macro stored in another file:
+## **7.6 Importing Macros**
 
+Import a macro from a file:
+
+```jinja2
 {% from 'misc/macros.j2' import p2p %}
+```
 
+Then call it:
 
-Then call:
-
+```jinja2
 {{ p2p(intf.name, intf.ip, intf.description) }}
+```
 
+Import multiple macros:
 
-You can import multiple macros:
-
+```jinja2
 {% from 'misc/macros.j2' import svi, p2p, nve_member %}
+```
 
-7.7 Real-World Examples
-7.7.1 Macro: Point-to-Point Underlay Interface
+---
 
-Underlay interface setup is often repeated:
+## **7.7 Real-World Examples**
 
+### **7.7.1 Underlay Point-to-Point Interface**
+
+```jinja2
 {% macro underlay_intf(intf, ip) -%}
 interface {{ intf }}
   no switchport
@@ -152,13 +164,19 @@ interface {{ intf }}
   ip ospf network point-to-point
   no shutdown
 {%- endmacro %}
+```
 
+Usage:
 
-Use:
-
+```jinja2
 {{ underlay_intf('Ethernet1/1', '10.0.0.1/31') }}
+```
 
-7.7.2 Macro: EVPN NVE Member Block
+---
+
+### **7.7.2 EVPN NVE Member Block**
+
+```jinja2
 {% macro nve_l2vni(vni, mcast_group=None) -%}
   member vni {{ vni }}
     {% if mcast_group is defined %}
@@ -167,13 +185,19 @@ Use:
     ingress-replication protocol bgp
     {% endif %}
 {%- endmacro %}
+```
 
+Usage:
 
-Use:
-
+```jinja2
 {{ nve_l2vni(v.vni, v.mcast_group) }}
+```
 
-7.7.3 Macro: FortiGate Address Object
+---
+
+### **7.7.3 FortiGate Address Object**
+
+```jinja2
 {% macro fg_addr(name, subnet) -%}
 config firewall address
   edit "{{ name }}"
@@ -181,96 +205,119 @@ config firewall address
   next
 end
 {%- endmacro %}
+```
 
+Usage:
 
-Use:
-
+```jinja2
 {{ fg_addr(obj.name, obj.subnet) }}
+```
 
-7.7.4 Macro: SVI Anycast Gateway (VXLAN EVPN)
+---
+
+### **7.7.4 VXLAN SVI Anycast Gateway**
+
+```jinja2
 {% macro svi_anycast(id, ip) -%}
 interface vlan {{ id }}
   ip address {{ ip }}
   fabric forwarding anycast-gateway
   no shutdown
 {%- endmacro %}
+```
 
+Usage:
 
-Use:
-
+```jinja2
 {{ svi_anycast(vlan.id, vlan.ip) }}
+```
 
-7.8 Passing Complex Data Structures
+---
 
-Macro calls can receive entire objects:
+## **7.8 Passing Complex Data Structures**
 
+Macros can receive entire objects:
+
+```jinja2
 {{ svi(vlan.id, vlan.name, vlan.ip) }}
+```
 
+Or full VRFs:
 
-Or for VRF:
-
+```jinja2
 {{ vrf_block(vrf.name, vrf.l3vni, vrf.rt) }}
+```
 
+Macros accept lists, dictionaries, nested objects — anything.
 
-Macros accept any values you pass, including lists, dictionaries, or nested objects.
+---
 
-7.9 Combining Macros With Loops
+## **7.9 Combining Macros With Loops**
 
-Example: Create many P2P underlay interfaces:
+Example: Generate underlay interfaces:
 
+```jinja2
 {% for u in underlay %}
 {{ p2p(u.iface, u.ip, u.desc) }}
 {% endfor %}
+```
 
+Clean and readable.
 
-This is cleaner than writing all configuration logic directly in the loop.
+---
 
-7.10 Macro Scoping Rules
+## **7.10 Macro Scoping Rules**
 
-Important rules:
+Important behavior:
 
-Macros cannot modify variables outside themselves.
+- Macros **cannot modify** variables outside themselves  
+- They see only the parameters passed  
+- Macros do **not** inherit template blocks  
+- Macros can be stored anywhere and imported  
+- Macros behave like pure functions — no side effects  
 
-Macros only see values passed into them.
+---
 
-Macros do not inherit template blocks.
+## **7.11 Advanced Macro Usage**
 
-Macros can be stored anywhere and imported.
+### Return text to a variable
 
-Macros behave like pure functions: no side effects, no global state modification.
-
-7.11 Advanced Macro Usage
-Macro Returning Text Instead of Printing
-
-Macros always return a text string.
-You can store it:
-
+```jinja2
 {% set text = p2p('Eth1/1', '10.0.0.1/31') %}
 {{ text }}
+```
 
-Macro inside a filter block
+### Macro inside a filter block
+
+```jinja2
 {% filter upper %}
 {{ p2p('Eth1/2', '10.0.0.3/31') }}
 {% endfilter %}
+```
 
-7.12 When to Use Macros vs Includes vs Inheritance
-Feature	Use Case
-Macro	Reusable config function (like SVI, NVE member, firewall rule)
-Include	Insert another file, like an OSPF block or BGP block
-Inheritance	Overall shape or skeleton of device configs (base → leaf/spine)
+---
 
-Macros are best for parameterized, repeatable blocks.
+## **7.12 When to Use Macros vs Includes vs Inheritance**
 
-7.13 Best Practices for Macros
+| Feature      | Use Case |
+|--------------|----------|
+| **Macro**    | Reusable, parameterized config (SVI, NVE, firewall rules) |
+| **Include**  | Paste another file (OSPF block, BGP block) |
+| **Inheritance** | Define overall template structure (base → leaf/spine) |
 
-Store macros in a dedicated file (misc/macros.j2).
+Macros are for **reusable functional blocks**.
 
-Keep macros small and focused.
+---
 
-Use descriptive macro names.
+## **7.13 Best Practices for Macros**
 
-Pass all required data as parameters (do not depend on global variables).
+- Store macros in `misc/macros.j2`  
+- Keep macros small and focused  
+- Use descriptive names  
+- Pass all data through parameters  
+- Avoid depending on global variables  
+- Keep internal logic minimal  
+- Prefer tests & filters instead of complex branching  
 
-Keep logic inside macros minimal—prefer tests and filters rather than deep branching.
+---
 
-Avoid embedding macros inside templates; import them instead.
