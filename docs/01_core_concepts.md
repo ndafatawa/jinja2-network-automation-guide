@@ -1,184 +1,190 @@
-01 — Core Concepts of Jinja2 for Network Automation
+01 – Core Concepts of Jinja2 for Network Automation
 
-1.1 What Is a Template?
+This document defines the essential concepts required to use Jinja2 to generate deterministic, scalable network configuration files.
 
-A template is a configuration file that contains:
+1. Jinja2 Template
 
-  normal device CLI
-
-  placeholders (variables)
-
-  small pieces of logic (loops, conditions)
+A template is a text file containing configuration with variable placeholders and optional logic.
 
 Example:
 
-    hostname {{ hostname }}
-  
-    interface Ethernet1/1
-      ip address {{ loopback0 }}
+interface mgmt0
+  ip address {{ mgmt_ip }}
 
 
-Templates allow you to generate many configs from one template.
+A template may include:
 
-1.2 What Is Rendering?
+placeholders ({{ ... }})
 
-  Rendering is the process of combining:
-  
-    Template (structure)
-  
-    Context (data)
-  
-  To produce:
-  
-    Final configuration text
-  
-  Rendering is simply:
-  
-  Template + Data → Final Config
-  
-  
-  Example:
-  
-  Template:
-  
-      hostname {{ hostname }}
-  
-  
-  Context:
-  
-      hostname: leaf01
-  
-  
-  Rendered output:
-  
-      hostname leaf01
+logic blocks ({% ... %})
 
-1.3 The Automation Pipeline (Important Mental Model)
+filters (| ...)
 
-This is the most important diagram in this entire repository.
-  
-    YAML / CSV                      ← Your data (per device, per fabric, per VLAN, per VRF)
-          ↓
-    Python loader                   ← Reads YAML/CSV into Python dictionaries
-          ↓
-    Context dict                    ← Clean, validated data passed to the template
-          ↓
-    Jinja2 template                 ← NX-OS/EOS/FortiGate/Arista template
-          ↓
-    Rendered config                 ← build/<device>.cfg
+loops
+
+conditionals
+
+macros
+
+includes
+
+inheritance
+
+2. Context (Data Model)
+
+The context is a Python dictionary passed to Jinja2 at render time.
+
+Example Python structure:
+
+{
+  "hostname": "LEAF1",
+  "mgmt_ip": "172.16.10.11/24",
+  "vlans": [
+    {"id": 10, "name": "SERVERS"},
+    {"id": 20, "name": "USERS"}
+  ]
+}
 
 
-You must understand this pipeline clearly.
-Everything in this repository follows this exact flow.
+Templates do not contain data.
+Context supplies all device-specific information.
 
-1.4 Why Network Engineers Use Templates
+3. Rendering Process
 
-  1. Consistency
-  Every device receives identical structure and style.
-  
-  2. Scale
-  Hundreds of devices can be generated at once.
-  
-  3. Speed
-  A full VXLAN/DC fabric can be generated in seconds.
-  
-  4. Change control
-  Small changes in YAML ripple through all configs safely.
-  
-  5. Reduce errors
-  Templates prevent typos and missing fields.
-  
-  1.5 What Is “Context”?
-  
-  Context is simply the data passed into the template.
+Rendering is the process of combining:
 
-Example YAML:
+template
 
-    hostname: leaf01
-    role: leaf
-    vlans:
-      - { id: 10, name: Servers }
-      - { id: 20, name: Users }
+context dictionary
+
+Jinja2 engine
+
+to produce the final configuration text.
+
+Conceptual pipeline:
+
+YAML / CSV / JSON / Excel
+       ↓ (Python load + validation)
+Context dictionary
+       ↓ (Python renderer)
+Jinja2 template
+       ↓
+Final configuration output
 
 
-The Jinja template can access this as:
+Render example:
 
-    hostname {{ hostname }}
-  
-    {% for v in vlans %}
-      vlan {{ v.id }}
-        name {{ v.name }}
-    {% endfor %}
+output = template.render(context)
 
-1.6 Why YAML and CSV?
+4. Data Sources
 
-YAML is used for:
+Device data usually comes from:
 
-    Per-device data
-  
-    Per-fabric data
-  
-    Hierarchical settings
+YAML (hierarchical data per device/site)
 
-CSV is used for:
+CSV (flat repetitive tables such as VLANs, firewall objects)
 
-    Long flat lists
-  
-    VLAN tables
-  
-    Address objects
-  
-    Firewall rules
-  
-    Services
+JSON (API or inventory export)
 
-This separation is standard across automation projects.
+Excel (via pandas)
 
-1.7 Where Python Fits
+Python dictionaries (generated programmatically)
 
-Python:
+All sources must produce a validated dictionary for Jinja2.
 
-  Loads the YAML/CSV
-  
-  Validates data
-  
-  Applies custom filters
-  
-  Selects templates per role (leaf/spine/firewall)
-  
-  Renders the final config
-  
-  Writes files to /build/
-  
-  This glue logic lives in scripts/render.py.
+5. Deterministic Output
 
-1.8 Jinja2’s Purpose in Network Automation
+All configuration output must be deterministic:
 
-Jinja2 solves three key problems:
+Lists must be sorted
 
-1. Configuration repetition
+Whitespace must be controlled
 
-Instead of writing 20 similar VLAN blocks, you write:
+Missing variables must raise errors (StrictUndefined)
 
-  {% for v in vlans %}
-  vlan {{ v.id }}
-    name {{ v.name }}
-  {% endfor %}
+Filters should normalize values (sort, unique, join)
 
-2. Conditional logic
+This ensures stable Git diffs and prevents configuration drift.
 
-Access vs trunk, multicast vs ingress replication:
+6. Project Structure (Recommended)
+project/
+  data/
+    devices.yml
+    fabric.yml
+    vlans.csv
+    overrides.yml
+  templates/
+    nxos/
+      device_base.j2
+      leaf.j2
+      spine.j2
+      underlay_intf.j2
+      underlay_ospf.j2
+      overlay_leaf_evpn.j2
+    misc/
+      macros.j2
+  scripts/
+    render.py
+  build/
+    <generated configs>
 
-  {% if fabric.replication == 'multicast' %}
-    mcast-group {{ v.mcast_group }}
-  {% else %}
-    ingress-replication protocol bgp
-  {% endif %}
+7. Jinja2 Engine Configuration (Python)
 
-3. Transform data smoothly
+A correct environment definition ensures predictable output:
 
-Filters convert raw data into vendor-ready syntax.
+env = Environment(
+    loader=FileSystemLoader("templates"),
+    trim_blocks=True,
+    lstrip_blocks=True,
+    undefined=StrictUndefined
+)
 
-Example:
 
-  switchport trunk allowed vlan {{ vlans | join(',') }}
+Key settings:
+
+trim_blocks: removes trailing newlines after blocks
+
+lstrip_blocks: removes indentation before blocks
+
+StrictUndefined: fail if context data is missing
+
+8. Role of Python
+
+Python performs:
+
+file loading (YAML/CSV/JSON)
+
+data validation and normalization
+
+merging of datasets
+
+construction of the context dictionary
+
+selection of device template
+
+registration of custom filters
+
+writing final configuration to build/
+
+Templates should contain minimal logic.
+All complex logic belongs in Python.
+
+9. Purpose of Jinja2 in Network Automation
+
+Jinja2 enables:
+
+consistent configuration generation
+
+elimination of manual errors
+
+reusable configuration components
+
+predictable change control
+
+multi-vendor templating
+
+integration with Git/GitOps
+
+generation of thousands of configs in seconds
+
+It converts data + templates → deployable configurations.
