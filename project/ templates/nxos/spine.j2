@@ -1,1 +1,16 @@
+{% extends 'nxos/device_base.j2' %}
+
+{% block base %}
+{% include 'nxos/base_common.j2' %}
+{% endblock %}
+
+{% block underlay %}
+{% include 'nxos/underlay_intf.j2' %}
+{% include 'nxos/underlay_ospf.j2' %}
+{% endblock %}
+
+{% block overlay %}
+router bgp {{ asn }}
+  address-family l2vpn evpn
+{% endblock %}
 
