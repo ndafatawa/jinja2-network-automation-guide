@@ -73,24 +73,24 @@ Everything in this repository follows this exact flow.
 
 1.4 Why Network Engineers Use Templates
 
-1. Consistency
-Every device receives identical structure and style.
-
-2. Scale
-Hundreds of devices can be generated at once.
-
-3. Speed
-A full VXLAN/DC fabric can be generated in seconds.
-
-4. Change control
-Small changes in YAML ripple through all configs safely.
-
-5. Reduce errors
-Templates prevent typos and missing fields.
-
-1.5 What Is “Context”?
-
-Context is simply the data passed into the template.
+  1. Consistency
+  Every device receives identical structure and style.
+  
+  2. Scale
+  Hundreds of devices can be generated at once.
+  
+  3. Speed
+  A full VXLAN/DC fabric can be generated in seconds.
+  
+  4. Change control
+  Small changes in YAML ripple through all configs safely.
+  
+  5. Reduce errors
+  Templates prevent typos and missing fields.
+  
+  1.5 What Is “Context”?
+  
+  Context is simply the data passed into the template.
 
 Example YAML:
 
