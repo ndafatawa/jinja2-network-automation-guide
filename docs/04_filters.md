@@ -1,292 +1,369 @@
-04 – Jinja2 Filters (Transforming Data Before Printing)
+# **04 – Jinja2 Filters (Transforming Data Before Printing)**
 
-This document provides a complete, network-focused explanation of filters in Jinja2.
-Filters allow you to modify, clean, sort, transform, or format values before they are printed in the final configuration.
+Jinja2 **filters** allow you to modify, clean, sort, format, or transform data *before* it is printed in the final configuration.  
+Filters are one of the most powerful features in network automation templates.
 
-4.1 What Is a Filter?
+---
+
+## **4.1 What Is a Filter?**
 
 A filter takes a value and transforms it into another value.
 
-Syntax:
+### Syntax
 
+```jinja2
 {{ value | filter_name }}
+```
 
+With arguments:
 
-Or with arguments:
-
+```jinja2
 {{ value | filter_name(arg1, arg2) }}
+```
 
+Filters clean and normalize data flowing from **YAML → Python → Jinja2 → final config**.
 
-Filters let you clean and normalize data as it flows from YAML to CLI configuration.
+---
 
-4.2 Why Network Engineers Use Filters
+## **4.2 Why Network Engineers Use Filters**
 
-Filters are used every day to:
+Filters are used daily to:
 
-produce deterministic, sorted VLAN lists
+- generate deterministic (sorted) VLAN lists  
+- join lists into comma-separated strings  
+- convert CIDR → IP + subnet mask  
+- sanitize names (uppercase, replace spaces)  
+- remove duplicates from CSV data  
+- cast values to integers for routing features  
+- build EVPN Route-Targets from VNIs  
 
-join lists into comma-separated strings
+Filters reduce complexity and improve the consistency of generated configs.
 
-convert network formats (CIDR → IP + mask)
+---
 
-uppercase or sanitize names
+## **4.3 Default Filters (Most Useful for Networking)**
 
-remove duplicates from CSV data
+Below are the default Jinja2 filters heavily used in network automation.
 
-type-cast strings into integers for routing features
+---
 
-build EVPN route-targets from VNIs
-
-Filters improve configuration consistency and reduce complexity in templates.
-
-4.3 Default Filters (Most Useful for Networking)
-
-Below are the core Jinja filters that are frequently used in network automation.
-
-4.3.1 join
+### **4.3.1 `join`**
 
 Convert a list → comma-separated string.
 
-YAML:
+**YAML**
 
+```yaml
 vlans: [10, 20, 30]
+```
 
+**Template**
 
-Template:
-
+```jinja2
 switchport trunk allowed vlan {{ vlans | join(',') }}
+```
 
+**Output**
 
-Output:
-
+```
 switchport trunk allowed vlan 10,20,30
+```
 
-4.3.2 sort
+---
 
-Sort a list alphabetically or numerically.
+### **4.3.2 `sort`**
 
-Template:
+Sort a list numerically or alphabetically.
 
+```jinja2
 {% for v in vlans | sort(attribute='id') %}
 vlan {{ v.id }}
 {% endfor %}
+```
 
+Ensures consistent output across devices.
 
-This ensures consistent output across devices.
+---
 
-4.3.3 unique
+### **4.3.3 `unique`**
 
 Remove duplicates.
 
-Example (CSV with repeated VLAN definitions):
-
+```jinja2
 {{ vlans | unique | sort | join(',') }}
+```
 
-4.3.4 upper / lower
+---
 
-Used for hostname normalization.
+### **4.3.4 `upper` / `lower`**
 
+Normalize names.
+
+```jinja2
 hostname {{ hostname | upper }}
+```
 
+**Output**
 
-Output:
-
+```
 hostname LEAF01
+```
 
-4.3.5 replace
+---
 
-Replace part of a string.
+### **4.3.5 `replace`**
 
+Replace characters.
+
+```jinja2
 {{ vrf_name | replace('-', '_') }}
+```
 
+Great for vendors that disallow spaces or hyphens.
 
-Example: VRF names normalized for N9K.
+---
 
-4.3.6 default(value)
+### **4.3.6 `default(value)`**
 
-Print fallback when variable is undefined:
+Fallback value when variable is undefined.
 
+```jinja2
 ip address {{ intf.ip | default("0.0.0.0/32") }}
+```
 
+Useful for optional interface IPs.
 
-Useful for optional values.
+---
 
-4.3.7 int, float
+### **4.3.7 `int`, `float`**
 
-Convert strings to numbers.
+Cast strings to numbers.
+
+```jinja2
+router bgp {{ asn | int }}
+```
 
 Used for:
 
-BGP ASN
+- BGP ASN  
+- OSPF priorities  
+- timers  
 
-timers
+---
 
-priority values
+## **4.4 Map + Attribute + Filters (EXTREMELY Important)**
 
-Example:
+The combination of **map → attribute → list/unique/sort → join** is used constantly.
 
-router bgp {{ asn | int }}
+**YAML**
 
-4.4 Map + Attribute + Filters (Very Powerful Pattern)
-
-You will use this frequently for network lists.
-
-Example YAML (list of VLAN objects):
-
+```yaml
 vlans:
   - { id: 10, name: Servers }
   - { id: 20, name: Users }
-
+```
 
 Extract only VLAN IDs:
 
+```jinja2
 {{ vlans | map(attribute='id') | list }}
-
+```
 
 Result:
 
+```
 [10, 20]
-
+```
 
 Full trunk example:
 
+```jinja2
 switchport trunk allowed vlan {{ vlans | map(attribute='id') | unique | sort | join(',') }}
+```
 
-4.5 Custom Filters (Defined in Python)
+---
 
-In large automation projects, you create your own filters for network needs.
+## **4.5 Custom Filters (Created in Python)**
 
-Custom filters live in render.py:
+Large network automation projects rely on custom filters.
 
+Custom filters are defined in `render.py`.
+
+### Example: EVPN Route-Target generator
+
+```python
 def vni_rt(vni: int, asn: int):
     return f"{asn}:{int(vni)}"
+```
 
+### Convert CIDR → IP + Mask
+
+```python
 def cidr_to_ipmask(cidr: str):
-    # 10.10.10.1/32 → 10.10.10.1 255.255.255.255
     import ipaddress
     ip = ipaddress.ip_interface(cidr)
     return f"{ip.ip} {ip.network.netmask}"
+```
 
+### Sanitize names (uppercase + underscores)
+
+```python
 def safe_name(s: str):
     return s.upper().replace(" ", "_").replace("-", "_")
+```
 
+### Register filters
 
-Register them:
-
+```python
 env.filters['vni_rt'] = vni_rt
 env.filters['cidr_to_ipmask'] = cidr_to_ipmask
 env.filters['safe_name'] = safe_name
+```
 
-4.6 Network Examples Using Custom Filters
-4.6.1 EVPN Route-Target from VNI
+---
 
-Template:
+## **4.6 Network Examples Using Custom Filters**
 
+### **4.6.1 EVPN Route-Target from VNI**
+
+**Template**
+
+```jinja2
 route-target import {{ vrf.l3vni | vni_rt(fabric.asn) }} evpn
+```
 
+**Data**
 
-Data:
-
+```yaml
 vrf:
   l3vni: 10001
 fabric:
   asn: 65000
+```
 
+**Output**
 
-Output:
-
+```
 route-target import 65000:10001 evpn
+```
 
-4.6.2 FortiGate Subnet Conversion
+---
 
-Template:
+### **4.6.2 FortiGate Subnet Conversion**
 
+**Template**
+
+```jinja2
 set subnet {{ obj.subnet | cidr_to_ipmask }}
+```
 
+**Input**
 
-Example row:
-
+```
 10.10.10.1/32
+```
 
+**Output**
 
-Output:
-
+```
 set subnet 10.10.10.1 255.255.255.255
+```
 
-4.6.3 Sanitizing Names for NX-OS/EOS
+---
 
-Template:
+### **4.6.3 Sanitize Names**
 
+**Template**
+
+```jinja2
 vlan {{ v.id }}
   name {{ v.name | safe_name }}
+```
 
+**Data**
 
-Data:
+```
+Prod-Web Servers
+```
 
-"Prod-Web Servers"
+**Output**
 
-
-Output:
-
+```
 name PROD_WEB_SERVERS
+```
 
-4.7 Complex Real-World Example: Trunk Allowed VLANs
+---
 
-YAML:
+## **4.7 Real Example: Trunk Allowed VLANs**
 
+**YAML**
+
+```yaml
 interfaces:
   - name: Ethernet1/1
     mode: trunk
     allowed_vlans: [20, 10, 10, 30]
+```
 
+**Template**
 
-Template:
-
+```jinja2
 {% set vl = intf.allowed_vlans | unique | sort | join(',') %}
 switchport trunk allowed vlan {{ vl }}
+```
 
+**Output**
 
-Output:
-
+```
 switchport trunk allowed vlan 10,20,30
+```
 
+---
 
-This ensures stable, clean diffs in Git.
-
-4.8 Filters Combined With Loops
+## **4.8 Filters Combined With Loops**
 
 Example:
 
+```jinja2
 {% for addr in addresses | unique | sort %}
 set allowed-address {{ addr }}
 {% endfor %}
+```
 
+Used for:
 
-Used in firewall rules and prefix-lists.
+- prefix-lists  
+- firewall address lists  
+- route-maps  
+- service objects  
 
-4.9 Filter Blocks
+---
 
-Used to transform entire configuration blocks:
+## **4.9 Filter Blocks**
 
+Transform entire blocks:
+
+```jinja2
 {% filter upper %}
 hostname {{ hostname }}
 {% endfilter %}
+```
 
+Output block becomes UPPERCASE.
 
-Output is entirely uppercase.
+Rarely used — but useful for normalizing vendor syntax.
 
-Rare but useful for normalizing vendor config.
+---
 
-4.10 Best Practices for Filters
+## **4.10 Best Practices for Filters**
 
-Always sort lists before joining them.
+- Always sort lists before joining  
+- Always `unique` when reading CSV/Excel  
+- Keep heavy logic in Python  
+- Register custom filters once  
+- Use filters for *formatting*, not *validation*  
+- Avoid ultra-long filter chains inside templates  
+- Keep templates readable  
 
-Always remove duplicates.
+---
 
-Never put complex logic inside the template; keep it in Python.
-
-Register custom filters only once in render.py.
-
-Use filters for formatting, not for data validation.
-
-Keep templates readable—avoid long filter chains inline.
