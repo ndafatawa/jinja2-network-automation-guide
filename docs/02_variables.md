@@ -1,217 +1,308 @@
-2.1 What is a Variable?
+# **02 – Variables in Jinja2**
 
-A variable is a placeholder inside a template.
-It is a value provided by your data (YAML, CSV, Python dictionaries).
+This section explains how variables work inside Jinja2 templates and how they connect your structured data (YAML/CSV/JSON/Python dicts) to dynamically generated network configuration.
 
-Template:
+---
 
-  hostname {{ hostname }}
+## **2.1 What Is a Variable?**
 
+A **variable** is a placeholder inside a template.  
+It represents a value coming from your data model.
 
-Data:
+### **Template**
 
-  hostname: leaf01
+```jinja2
+hostname {{ hostname }}
+```
 
+### **Data**
 
-Rendered output:
+```yaml
+hostname: leaf01
+```
 
-  hostname leaf01
+### **Rendered Output**
 
+```
+hostname leaf01
+```
 
-Variables allow templates to become dynamic, meaning one template can produce configuration for many different devices.
+Variables make templates reusable across many devices.
 
-2.2 How to Write Variables in Templates
+---
 
-Syntax:
+## **2.2 How to Write Variables in Templates**
 
-  {{ variable_name }}
+### **Syntax**
 
+```jinja2
+{{ variable_name }}
+```
 
-Everything inside the {{ ... }} is evaluated and printed.
+Everything inside `{{ ... }}` is evaluated and printed.
 
-2.3 Variables Come From the Context
+---
 
-Python:
+## **2.3 Variables Come From the Context**
 
+### Python Context
+
+```python
 template.render(
     hostname="leaf01",
     mgmt_ip="172.16.10.10",
-    vlans=[{"id":10, "name":"Servers"}]
+    vlans=[{"id": 10, "name": "Servers"}]
 )
+```
 
+### Template Example
 
-Template:
+```jinja2
+hostname {{ hostname }}
+ip address {{ mgmt_ip }}
+```
 
-  hostname {{ hostname }}
-  ip address {{ mgmt_ip }}
+---
 
-2.4 Dot Notation vs Bracket Notation
+## **2.4 Dot Notation vs Bracket Notation**
 
-Dot notation:
+### **Dot Notation**
 
-  {{ vlan.id }}
-  {{ device.hostname }}
-  {{ interface.description }}
+```jinja2
+{{ vlan.id }}
+{{ device.hostname }}
+{{ interface.description }}
+```
 
+### **Bracket Notation**
 
-Bracket notation:
+```jinja2
+{{ vlan['id'] }}
+{{ device['hostname'] }}
+{{ interface['description'] }}
+```
 
-  {{ vlan['id'] }}
-  {{ device['hostname'] }}
-  {{ interface['description'] }}
+Both work — but dot notation is cleaner.
 
-2.5 How Dot Notation Works
-  {{ vlan.id }}
+---
 
+## **2.5 How Dot Notation Works**
 
-Jinja checks:
+Expression:
 
-Does object have attribute id?
+```jinja2
+{{ vlan.id }}
+```
 
-If not, does it have a dictionary key id?
+Jinja checks in this order:
 
-For YAML → Python dicts, it normally resolves dictionary keys.
+1. Does object have attribute `id`?  
+2. If not, does object have dictionary key `"id"`?
 
-2.6 How Bracket Notation Works
+For YAML → Python dicts, Jinja resolves dictionary keys automatically.
 
-Explicit:
+---
 
-  {{ vlan['id'] }}
+## **2.6 How Bracket Notation Works**
 
+Bracket notation explicitly refers to a dictionary key:
 
-Always refers to dictionary key "id".
+```jinja2
+{{ vlan['id'] }}
+```
 
-2.7 Recommended Style
+Use this when the key contains symbols (rare).
 
-Use dot notation in templates, and keep YAML as dictionaries.
+---
+
+## **2.7 Recommended Style**
+
+Use **dot notation** everywhere.
 
 Example:
 
-  switchport access vlan {{ interface.vlan }}
+```jinja2
+switchport access vlan {{ interface.vlan }}
+```
 
-2.8 Examples of Variables in Network Templates
-VLAN Example
+And keep YAML objects as dictionaries.
 
-YAML:
+---
 
+## **2.8 Examples of Variables in Network Templates**
+
+### **VLAN Example**
+
+**YAML**
+
+```yaml
 vlans:
   - id: 10
     name: Servers
+```
 
+**Template**
 
-Template:
-
+```jinja2
 vlan {{ vlan.id }}
   name {{ vlan.name }}
+```
 
+**Output**
 
-Output:
-
+```
 vlan 10
   name Servers
+```
 
-Interface Example
+---
 
-YAML:
+### **Interface Example**
 
+**YAML**
+
+```yaml
 interfaces:
   - name: Ethernet1/1
     mode: access
     vlan: 10
+```
 
+**Template**
 
-Template:
-
+```jinja2
 interface {{ intf.name }}
   switchport mode {{ intf.mode }}
   switchport access vlan {{ intf.vlan }}
+```
 
-BGP Example
+---
 
-YAML:
+### **BGP Example**
 
+**YAML**
+
+```yaml
 bgp:
   asn: 65001
   router_id: 10.1.1.1
+```
 
+**Template**
 
-Template:
-
+```jinja2
 router bgp {{ bgp.asn }}
   router-id {{ bgp.router_id }}
+```
 
-2.9 Nested Variables
+---
 
-YAML:
+## **2.9 Nested Variables**
 
+**YAML**
+
+```yaml
 device:
   hostname: leaf01
   loopbacks:
     lo0: 10.1.1.1/32
     lo1: 10.1.2.1/32
+```
 
+**Template**
 
-Template:
+```jinja2
+hostname {{ device.hostname }}
 
-  hostname {{ device.hostname }}
+interface loopback0
+  ip address {{ device.loopbacks.lo0 }}
+```
 
-  interface loopback0
-    ip address {{ device.loopbacks.lo0 }}
+---
 
-2.10 Missing Variables and StrictUndefined
+## **2.10 Missing Variables and StrictUndefined**
 
-Bad behavior (default Jinja):
+### **Default Jinja behavior (dangerous)**
 
-  hostname {{ hostname }}
+```jinja2
+hostname {{ hostname }}
+```
 
+If `hostname` is missing → output becomes:
 
-Missing variable produces:
-
+```
 hostname 
+```
 
+This is extremely risky for network configs.
 
-This is dangerous for production configs.
+### **Correct behavior**
 
-Correct approach used in this repository:
+This project uses:
 
+```python
 undefined = StrictUndefined
+```
 
+Which produces an error:
 
-This makes missing variables throw an error:
-
+```
 UndefinedError: 'hostname' is undefined
+```
 
-2.11 Variable Transformations (Filters)
+This prevents silent failures.
+
+---
+
+## **2.11 Variable Transformations (Filters)**
 
 Examples:
 
+```jinja2
 {{ hostname | upper }}
 {{ vlan_list | join(',') }}
 {{ vrf.asn | int }}
+```
 
+(See **04_filters.md** for full details.)
 
-Filters are explained fully in 04_filters.md.
+---
 
-2.12 Common Variable Patterns in Network Templates
-Hostname
+## **2.12 Common Variable Patterns in Network Templates**
+
+### Hostname
+
+```jinja2
 hostname {{ hostname }}
+```
 
-Interface
+### Interface
+
+```jinja2
 interface {{ intf.name }}
 description {{ intf.description }}
+```
 
-SVI
+### SVI
+
+```jinja2
 ip address {{ svi.ip }}
+```
 
-VLAN
+### VLAN
+
+```jinja2
 switchport access vlan {{ intf.vlan }}
+```
 
-2.13 Best Practices
+---
 
-Use lowercase variable names.
+## **2.13 Best Practices**
 
-Keep YAML consistent across devices.
+- Use lowercase variable names  
+- Keep all YAML structured consistently  
+- Avoid deep nested objects  
+- Validate required variables in Python  
+- Use `StrictUndefined` to catch missing data immediately  
 
-Avoid overly deep nesting.
-
-Validate required variables in Python.
+---
