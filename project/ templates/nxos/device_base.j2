@@ -1,6 +1,10 @@
 hostname {{ hostname }}
 
+<! ===== BASE CONFIGURATION =====>
 {% block base %}{% endblock %}
-{% block underlay %}{% endblock %}
-{% block overlay %}{% endblock %}
 
+<! ===== UNDERLAY CONFIGURATION =====>
+{% block underlay %}{% endblock %}
+
+<! ===== OVERLAY CONFIGURATION =====>
+{% block overlay %}{% endblock %}
