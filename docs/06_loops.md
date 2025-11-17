@@ -1,77 +1,84 @@
-06 – Jinja2 Loops (Iterating Over Lists in Network Templates)
+# **06 – Jinja2 Loops (Iterating Over Lists in Network Templates)**
 
-This document explains loops in Jinja2, how they function, how they relate to YAML/CSV data, and how real network engineers use them in VXLAN EVPN, interface configuration, firewall rules, and template generation.
+Loops are one of the most important features in Jinja2.  
+Almost every network configuration contains repeated blocks: VLANs, interfaces, VRFs, BGP neighbors, firewall objects, etc.  
+Loops allow these sections to be generated dynamically from structured data.
 
-Loops are one of the most important mechanisms in network automation because almost all network configurations contain repetitive blocks.
+---
 
-6.1 What Is a Loop?
+## **6.1 What Is a Loop?**
 
-A loop allows you to repeat a block of configuration for each item in a list.
+A loop repeats a block of configuration for each item in a list.
 
-Syntax:
+### Syntax
 
+```jinja2
 {% for item in list %}
   ... do something with item ...
 {% endfor %}
+```
 
+Loops generate scalable dynamic configuration.
 
-Loops generate dynamic, scalable configuration blocks.
+---
 
-6.2 Why Network Engineers Use Loops
+## **6.2 Why Network Engineers Use Loops**
 
-Network devices often require repeating structures:
+Network configs contain repeating structures:
 
-VLAN definitions
+- VLAN definitions  
+- SVI interfaces  
+- EVPN VNIs  
+- VRF definitions  
+- BGP neighbors  
+- Underlay links  
+- Trunk VLAN lists  
+- Firewall address objects  
 
-SVI interfaces
+Without loops: **copy/paste hell**.
 
-EVPN VNIs
+With loops: **clean, scalable templates**.
 
-VRF definitions
+---
 
-BGP neighbors
+## **6.3 Basic Loop Example (VLAN List)**
 
-Underlay interfaces
+### **YAML**
 
-Trunk allowed VLAN lists
-
-Address objects (FortiGate)
-
-Without loops, you would need to copy/paste dozens or hundreds of configuration blocks manually.
-
-Loops eliminate repetition and errors.
-
-6.3 Basic Loop Example (VLAN List)
-
-YAML:
-
+```yaml
 vlans:
   - { id: 10, name: Servers }
   - { id: 20, name: Users }
   - { id: 30, name: DMZ }
+```
 
+### **Template**
 
-Template:
-
+```jinja2
 {% for v in vlans %}
 vlan {{ v.id }}
   name {{ v.name }}
 {% endfor %}
+```
 
+### **Output**
 
-Rendered output:
-
+```
 vlan 10
   name Servers
 vlan 20
   name Users
 vlan 30
   name DMZ
+```
 
-6.4 Loop With Nested Values
+---
 
-YAML:
+## **6.4 Loop With Nested Values**
 
+### **YAML**
+
+```yaml
 interfaces:
   - name: Ethernet1/1
     mode: access
@@ -79,10 +86,11 @@ interfaces:
   - name: Ethernet1/2
     mode: trunk
     allowed: [10,20,30]
+```
 
+### **Template**
 
-Template:
-
+```jinja2
 {% for intf in interfaces %}
 interface {{ intf.name }}
   switchport mode {{ intf.mode }}
@@ -93,96 +101,99 @@ interface {{ intf.name }}
   switchport trunk allowed vlan {{ intf.allowed | join(',') }}
   {% endif %}
 {% endfor %}
+```
 
-6.5 Filtering Inside Loop Header
+---
 
-Jinja2 allows filtering directly in the loop header.
+## **6.5 Filtering Inside Loop Header**
 
-Example: Only print VLANs belonging to a specific VRF:
+Filter items directly in the loop statement.
 
+### VLANs for a single VRF
+
+```jinja2
 {% for v in vlans if v.vrf == 'PROD' %}
 vlan {{ v.id }}
   name {{ v.name }}
 {% endfor %}
+```
 
+### Only L3VNI VLANs
 
-Example: Only print L3VNI VLANs:
-
+```jinja2
 {% for v in vlans if v.l3vni %}
 ...
 {% endfor %}
+```
 
+More readable than using an internal `if` block.
 
-This is more readable than writing an if block inside the loop.
+---
 
-6.6 Loop Index (Very Useful)
+## **6.6 Loop Index (Very Useful)**
 
-Every loop exposes loop.index, loop.index0, and other attributes.
+Jinja2 exposes loop metadata:
 
-Example:
+- `loop.index` → starts at 1  
+- `loop.index0` → starts at 0  
+- `loop.first` → True for first item  
+- `loop.last` → True for last item  
 
+### Example
+
+```jinja2
 {% for v in vlans %}
-! VLAN number {{ loop.index }} in the list
+! VLAN number {{ loop.index }}
 vlan {{ v.id }}
 {% endfor %}
+```
 
+---
 
-Attributes:
+## **6.7 Grouping Output Using `divisibleby`**
 
-loop.index → starts at 1
+Used for formatting readable output.
 
-loop.index0 → starts at 0
+### Example — spacing every 5 VLANs
 
-loop.first → True for first iteration
-
-loop.last → True for last iteration
-
-Useful for numbering interface descriptions, comments, or groupings.
-
-6.7 Grouping Output Using divisibleby
-
-This is extremely useful for readable configurations.
-
-Example: Add a blank line after every 5 VLANs:
-
+```jinja2
 {% for v in vlans %}
 vlan {{ v.id }}
   name {{ v.name }}
 
 {% if loop.index is divisibleby(5) %}
-! -------- spacing --------
+! ----- spacing -----
 {% endif %}
 
 {% endfor %}
+```
 
+Used for:
 
-Used in:
+- prefix-lists  
+- firewall objects  
+- route-maps  
+- VLAN groups  
 
-firewall addresses
+---
 
-prefix-lists
+## **6.8 Nested Loops**
 
-VLAN tables
+Loops inside loops.
 
-static routes
+### **YAML**
 
-6.8 Nested Loops
-
-Nested loops operate exactly like nested Python loops.
-
-Example: VRFs and VLANs inside each VRF.
-
-YAML:
-
+```yaml
 vrfs:
   - name: PROD
     vlans: [10, 20]
   - name: GUEST
     vlans: [30]
+```
 
+### **Template**
 
-Template:
-
+```jinja2
 {% for vrf in vrfs %}
 vrf context {{ vrf.name }}
 
@@ -191,69 +202,86 @@ vrf context {{ vrf.name }}
 {% endfor %}
 
 {% endfor %}
+```
 
-6.9 Looping Over Dictionaries
+---
 
-Sometimes YAML has dictionary structures:
+## **6.9 Looping Over Dictionaries**
 
+YAML may contain dictionaries:
+
+```yaml
 loopbacks:
   lo0: 10.1.1.1/32
   lo1: 10.1.2.1/32
+```
 
+### Template
 
-Template:
-
+```jinja2
 {% for name, ip in loopbacks.items() %}
 interface {{ name }}
   ip address {{ ip }}
 {% endfor %}
+```
 
-6.10 Looping Over CSV Data
+---
 
-If CSV is loaded into Python as a list of dicts:
+## **6.10 Looping Over CSV Data**
 
+CSV loaded into Python becomes a list of dicts:
+
+```python
 addresses = [
   {"name": "Server01", "subnet": "10.1.1.1/32"},
   {"name": "Server02", "subnet": "10.1.1.2/32"},
 ]
+```
 
+### Template
 
-Template:
-
+```jinja2
 {% for obj in addresses %}
 config firewall address
   edit "{{ obj.name }}"
     set subnet {{ obj.subnet | cidr_to_ipmask }}
   next
 {% endfor %}
+```
 
-6.11 Loop Controls: break and continue
+---
 
-Jinja2 supports loop control similar to Python but more limited.
+## **6.11 Loop Controls: `break` and `continue`**
 
-Skip one item:
+Skip an item:
+
+```jinja2
 {% for v in vlans %}
   {% if v.id == 999 %}
     {% continue %}
   {% endif %}
 vlan {{ v.id }}
 {% endfor %}
+```
 
-Stop the loop early:
+Stop early:
+
+```jinja2
 {% for v in vlans %}
   {% if v.id > 200 %}
     {% break %}
   {% endif %}
 vlan {{ v.id }}
 {% endfor %}
+```
 
+Used rarely but helpful.
 
-Used rarely, but sometimes helpful.
+---
 
-6.12 Real-World Example: NVE Members for L2VNIs
+## **6.12 Real-World Example: NVE Members (L2VNIs)**
 
-Template:
-
+```jinja2
 interface nve1
   no shutdown
   host-reachability protocol bgp
@@ -267,52 +295,57 @@ interface nve1
     ingress-replication protocol bgp
     {% endif %}
 {% endfor %}
+```
 
+Standard in VXLAN EVPN templates.
 
-This is typical in VXLAN-EVPN automation.
+---
 
-6.13 Real-World Example: BGP Neighbors
+## **6.13 Real-World Example: BGP Neighbors**
 
-YAML:
+### YAML
 
+```yaml
 bgp_neighbors:
   - { ip: 10.1.0.1, asn: 65000 }
   - { ip: 10.1.0.2, asn: 65000 }
+```
 
+### Template
 
-Template:
-
+```jinja2
 {% for n in bgp_neighbors %}
 neighbor {{ n.ip }} remote-as {{ n.asn }}
   update-source loopback0
   address-family ipv4 unicast
   send-community both
 {% endfor %}
+```
 
-6.14 Loop Performance Considerations
+---
 
-Loops are extremely fast.
-Even hundreds of entries render in milliseconds.
+## **6.14 Loop Performance Considerations**
 
-Bottlenecks occur only when:
+Loops are extremely fast — even hundreds of items render in milliseconds.
 
-deep nested loops with heavy transformations
+Performance issues occur only when:
 
-loops combine many filters inline
+- deep nested loops  
+- many filters inline  
+- too much logic in the template  
 
-templates are overly complex
+Best practice: **move heavy processing to Python.**
 
-Best practice:
-Move heavy processing into Python before rendering.
+---
 
-6.15 Best Practices for Using Loops
+## **6.15 Best Practices for Loops**
 
-Keep loop logic simple.
+- Keep loop logic simple  
+- Filter inside loop header when possible  
+- Combine loops with `is defined` and `divisibleby`  
+- Use `set` for complex filter chains  
+- Avoid over-nested loops; flatten data in Python  
+- Keep templates readable and maintainable  
 
-Use filtering in the loop header where possible.
+---
 
-Combine with tests (is defined, divisibleby) for clean output.
-
-Use intermediate variables (set) for readability.
-
-Avoid too many nested loops; flatten data if needed.
