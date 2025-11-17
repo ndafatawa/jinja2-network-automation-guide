@@ -1,4 +1,4 @@
-Jinja2 Network Automation Guide
+# Jinja2 Network Automation Guide
 
 This repository provides a complete, beginner-friendly guide to network automation using Jinja2, Python, YAML, and CSV.
 It explains core concepts such as templates, variables, statements, loops, filters, tests, macros, includes, inheritance, whitespace control, data modeling, and validation.
