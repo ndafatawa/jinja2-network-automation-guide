@@ -57,15 +57,15 @@ Rendered output:
 
 This is the most important diagram in this entire repository.
   
-  YAML / CSV                      ← Your data (per device, per fabric, per VLAN, per VRF)
-        ↓
-  Python loader                   ← Reads YAML/CSV into Python dictionaries
-        ↓
-  Context dict                    ← Clean, validated data passed to the template
-        ↓
-  Jinja2 template                 ← NX-OS/EOS/FortiGate/Arista template
-        ↓
-  Rendered config                 ← build/<device>.cfg
+    YAML / CSV                      ← Your data (per device, per fabric, per VLAN, per VRF)
+          ↓
+    Python loader                   ← Reads YAML/CSV into Python dictionaries
+          ↓
+    Context dict                    ← Clean, validated data passed to the template
+          ↓
+    Jinja2 template                 ← NX-OS/EOS/FortiGate/Arista template
+          ↓
+    Rendered config                 ← build/<device>.cfg
 
 
 You must understand this pipeline clearly.
