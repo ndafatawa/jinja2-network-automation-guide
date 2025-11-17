@@ -41,31 +41,31 @@ Example:
 
 Template:
 
-  hostname {{ hostname }}
+    hostname {{ hostname }}
 
 
 Context:
 
-  hostname: leaf01
+    hostname: leaf01
 
 
 Rendered output:
 
-  hostname leaf01
+    hostname leaf01
 
 1.3 The Automation Pipeline (Important Mental Model)
 
 This is the most important diagram in this entire repository.
-
-YAML / CSV                      ← Your data (per device, per fabric, per VLAN, per VRF)
-      ↓
-Python loader                   ← Reads YAML/CSV into Python dictionaries
-      ↓
-Context dict                    ← Clean, validated data passed to the template
-      ↓
-Jinja2 template                 ← NX-OS/EOS/FortiGate/Arista template
-      ↓
-Rendered config                 ← build/<device>.cfg
+  
+  YAML / CSV                      ← Your data (per device, per fabric, per VLAN, per VRF)
+        ↓
+  Python loader                   ← Reads YAML/CSV into Python dictionaries
+        ↓
+  Context dict                    ← Clean, validated data passed to the template
+        ↓
+  Jinja2 template                 ← NX-OS/EOS/FortiGate/Arista template
+        ↓
+  Rendered config                 ← build/<device>.cfg
 
 
 You must understand this pipeline clearly.
@@ -94,21 +94,21 @@ Context is simply the data passed into the template.
 
 Example YAML:
 
-  hostname: leaf01
-  role: leaf
-  vlans:
-    - { id: 10, name: Servers }
-    - { id: 20, name: Users }
+    hostname: leaf01
+    role: leaf
+    vlans:
+      - { id: 10, name: Servers }
+      - { id: 20, name: Users }
 
 
 The Jinja template can access this as:
 
-  hostname {{ hostname }}
-
-  {% for v in vlans %}
-    vlan {{ v.id }}
-      name {{ v.name }}
-  {% endfor %}
+    hostname {{ hostname }}
+  
+    {% for v in vlans %}
+      vlan {{ v.id }}
+        name {{ v.name }}
+    {% endfor %}
 
 1.6 Why YAML and CSV?
 
@@ -160,20 +160,20 @@ Jinja2 solves three key problems:
 
 Instead of writing 20 similar VLAN blocks, you write:
 
-{% for v in vlans %}
-vlan {{ v.id }}
-  name {{ v.name }}
-{% endfor %}
+  {% for v in vlans %}
+  vlan {{ v.id }}
+    name {{ v.name }}
+  {% endfor %}
 
 2. Conditional logic
 
 Access vs trunk, multicast vs ingress replication:
 
-{% if fabric.replication == 'multicast' %}
-  mcast-group {{ v.mcast_group }}
-{% else %}
-  ingress-replication protocol bgp
-{% endif %}
+  {% if fabric.replication == 'multicast' %}
+    mcast-group {{ v.mcast_group }}
+  {% else %}
+    ingress-replication protocol bgp
+  {% endif %}
 
 3. Transform data smoothly
 
@@ -181,4 +181,4 @@ Filters convert raw data into vendor-ready syntax.
 
 Example:
 
-switchport trunk allowed vlan {{ vlans | join(',') }}
+  switchport trunk allowed vlan {{ vlans | join(',') }}
