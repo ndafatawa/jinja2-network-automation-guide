@@ -1,18 +1,7 @@
-# jinja2-network-automation-guide
-Welcome to your first network automation repository.
+Jinja2 Network Automation Guide
 
-This project teaches network engineers (with zero automation experience) how to use:
+This repository provides a complete, beginner-friendly guide to network automation using Jinja2, Python, YAML, and CSV.
+It explains core concepts such as templates, variables, statements, loops, filters, tests, macros, includes, inheritance, whitespace control, data modeling, and validation.
 
-Jinja2 templates
-
-YAML + CSV data
-
-Python (rendering script)
-
-Custom filters + tests
-
-Vendor-specific templates (NX-OS, EOS, FortiGate)
-
-…to generate clean, deterministic network configurations automatically.
-
-Whether you are learning automation or using this for real DC deployments (VXLAN EVPN), this guide walks you through every concept in simple language.
+The project includes real-world examples for NX-OS VXLAN EVPN, Arista EOS VLAN automation, and FortiGate address object generation.
+All explanations are written for network engineers with no prior programming experience.
