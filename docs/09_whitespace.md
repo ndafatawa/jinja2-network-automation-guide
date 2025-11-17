@@ -63,24 +63,24 @@ This is NOT what we want for network configs.
 
 A proper renderer sets:
 
-env = Environment(
-    loader=FileSystemLoader(str(TPL)),
-    trim_blocks=True,
-    lstrip_blocks=True,
-    undefined=StrictUndefined,
-)
+    env = Environment(
+        loader=FileSystemLoader(str(TPL)),
+        trim_blocks=True,
+        lstrip_blocks=True,
+        undefined=StrictUndefined,
+    )
 
 
 These two flags are critical:
 
-trim_blocks=True
+    trim_blocks=True
 
 Removes newline after Jinja2 blocks:
 
-{% if ... %}  <-- no blank line inserted
+    {% if ... %}  <-- no blank line inserted
 Actual config line here
 
-lstrip_blocks=True
+    lstrip_blocks=True
 
 Strips indentation before a control block:
 
@@ -95,28 +95,28 @@ These two settings produce clean, predictable output.
 Sometimes you want to suppress whitespace for a particular line.
 Use:
 
--%}
+    -%}
 
 
 instead of:
 
-%}
+    %}
 
 
 Example:
 
-{% for v in vlans -%}
-vlan {{ v.id }}
-  name {{ v.name }}
-{%- endfor %}
-
+    {% for v in vlans -%}
+    vlan {{ v.id }}
+      name {{ v.name }}
+    {%- endfor %}
+    
 
 This produces:
 
-vlan 10
-  name PROD
-vlan 20
-  name USERS
+    vlan 10
+      name PROD
+    vlan 20
+      name USERS
 
 
 Notice:
@@ -132,37 +132,37 @@ Without whitespace control:
 
 Template:
 
-{% for v in vlans %}
-vlan {{ v.id }}
-  name {{ v.name }}
-{% endfor %}
+    {% for v in vlans %}
+    vlan {{ v.id }}
+      name {{ v.name }}
+    {% endfor %}
 
 
 Output:
 
-vlan 10
-  name PROD
-
-vlan 20
-  name USERS
-
+    vlan 10
+      name PROD
+    
+    vlan 20
+      name USERS
+    
 
 
 There are blank lines between entries.
 
 With whitespace control:
-{% for v in vlans -%}
-vlan {{ v.id }}
-  name {{ v.name }}
-{%- endfor %}
+    {% for v in vlans -%}
+    vlan {{ v.id }}
+      name {{ v.name }}
+    {%- endfor %}
 
 
 Output:
 
-vlan 10
-  name PROD
-vlan 20
-  name USERS
+    vlan 10
+      name PROD
+    vlan 20
+      name USERS
 
 
 Exactly what you want.
@@ -171,19 +171,19 @@ Exactly what you want.
 
 Uncontrolled conditional blocks often produce empty lines:
 
-{% if vrf.l3vni %}
-router bgp 65001
-  address-family l2vpn evpn
-{% endif %}
+    {% if vrf.l3vni %}
+    router bgp 65001
+      address-family l2vpn evpn
+    {% endif %}
 
 
 If vrf.l3vni is not defined, the template prints a blank line.
 
 Fix using -%}:
-{% if vrf.l3vni -%}
-router bgp 65001
-  address-family l2vpn evpn
-{%- endif %}
+    {% if vrf.l3vni -%}
+    router bgp 65001
+      address-family l2vpn evpn
+    {%- endif %}
 
 
 Now nothing is printed if condition is false.
@@ -192,15 +192,15 @@ Now nothing is printed if condition is false.
 
 Wrap top-level blocks tightly:
 
-{%- extends 'nxos/device_base.j2' -%}
+    {%- extends 'nxos/device_base.j2' -%}
 
 
 or:
 
-{%- block base -%}
-...
-{%- endblock %}
-
+    {%- block base -%}
+    ...
+    {%- endblock %}
+    
 
 The leading/trailing whitespace is eliminated.
 
@@ -208,14 +208,14 @@ The leading/trailing whitespace is eliminated.
 
 Consider a large include:
 
-{% include 'nxos/underlay_intf.j2' %}
+    {% include 'nxos/underlay_intf.j2' %}
 
 
 It may result in unwanted blank lines above/below the included text.
 
 Use:
 
-{%- include 'nxos/underlay_intf.j2' -%}
+    {%- include 'nxos/underlay_intf.j2' -%}
 
 
 This trims whitespace before and after the include.
@@ -229,21 +229,21 @@ This trims whitespace before and after the include.
 6. Render a sample of multiple devices to confirm whitespace consistency.
 9.10 Examples from Real Projects
 VXLAN VNI list
-{% for v in l2_vnis -%}
-member vni {{ v.vni }}
-  mcast-group {{ v.mcast_group }}
-{%- endfor %}
+    {% for v in l2_vnis -%}
+    member vni {{ v.vni }}
+      mcast-group {{ v.mcast_group }}
+    {%- endfor %}
 
 ACL entries
-{% for rule in rules -%}
-{{ rule.action }} {{ rule.src }} {{ rule.dst }} eq {{ rule.port }}
-{%- endfor %}
+    {% for rule in rules -%}
+    {{ rule.action }} {{ rule.src }} {{ rule.dst }} eq {{ rule.port }}
+    {%- endfor %}
 
 BGP neighbors
-router bgp {{ asn }}
-{% for nbr in neighbors -%}
-  neighbor {{ nbr.ip }} remote-as {{ nbr.asn }}
-{%- endfor %}
+    router bgp {{ asn }}
+    {% for nbr in neighbors -%}
+      neighbor {{ nbr.ip }} remote-as {{ nbr.asn }}
+    {%- endfor %}
 
 
 All clean, no extra whitespace.
