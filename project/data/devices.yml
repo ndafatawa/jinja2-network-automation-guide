@@ -1,1 +1,35 @@
+devices:
+  - hostname: spine01
+    mgmt_ip: 172.16.10.101
+    os: nxos
+    role: spine
+    asn: 65001
+    loopbacks:
+      lo0: 10.255.0.1/32
+
+  - hostname: spine02
+    mgmt_ip: 172.16.10.102
+    os: nxos
+    role: spine
+    asn: 65001
+    loopbacks:
+      lo0: 10.255.0.2/32
+
+  - hostname: leaf01
+    mgmt_ip: 172.16.10.11
+    os: nxos
+    role: leaf
+    asn: 65001
+    loopbacks:
+      lo0: 10.1.1.11/32
+      lo1: 10.1.2.11/32
+
+  - hostname: leaf02
+    mgmt_ip: 172.16.10.12
+    os: nxos
+    role: leaf
+    asn: 65001
+    loopbacks:
+      lo0: 10.1.1.12/32
+      lo1: 10.1.2.12/32
 
