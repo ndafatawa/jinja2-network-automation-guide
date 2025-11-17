@@ -1,1 +1,17 @@
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  source-interface loopback{{ fabric.nve_source_loopback }}
+
+{% for v in vlans %}
+  member vni {{ v.vni }}
+    ingress-replication protocol bgp
+{% endfor %}
+
+router bgp {{ asn }}
+  address-family l2vpn evpn
+{% for v in vlans %}
+    route-target import auto
+    route-target export auto
+{% endfor %}
 
