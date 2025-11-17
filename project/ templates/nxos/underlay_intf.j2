@@ -1,1 +1,9 @@
+{% for link in underlay_links if link.local == hostname %}
+interface {{ link.intf }}
+  no switchport
+  mtu {{ fabric.mtu }}
+  ip address {{ link.ip }}
+  ip ospf network point-to-point
+  no shutdown
+{% endfor %}
 
