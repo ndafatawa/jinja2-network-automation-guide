@@ -1,25 +1,25 @@
-# **18 – Production-Grade Project Structure & CI/CD Workflow**
+# **16 – Production-Grade Project Structure & CI/CD Workflow**
 
-This chapter explains how to take your automation from “lab level” to **real enterprise production standards**.
+This chapter explains how to take your automation from “lab level” to real enterprise production standards.
 
 It covers:
 
-- directory layout  
-- data modeling  
-- template organization  
-- validation  
-- rendering pipeline  
-- Git workflow  
-- CI/CD  
-- compliance and drift detection  
-- deployment (dry-run + push)  
-- multi-vendor scalability  
+- directory layout
+- data modeling
+- template organization
+- validation
+- rendering pipeline
+- Git workflow
+- CI/CD
+- compliance and drift detection
+- deployment (dry-run + push)
+- multi-vendor scalability
 
 This is the blueprint used by actual automation teams in Fortune 500 networks.
 
 ---
 
-# **18.1 Core Principles of a Production Automation Repository**
+# **16.1 Core Principles of a Production Automation Repository**
 
 A production project must follow these rules:
 
@@ -36,7 +36,7 @@ Every run must produce identical results given identical input.
 Every config is stored in Git. All changes are diffable.
 
 ### **5. Validation**
-Bad inputs must be caught *before* generating configs.
+Bad inputs must be caught before generating configs.
 
 ### **6. Idempotent rendering**
 Regenerate 100 times → output is identical 100 times.
@@ -49,7 +49,7 @@ Automation should run tests on every commit.
 
 ---
 
-# **18.2 Recommended Production Directory Structure**
+# **16.2 Recommended Production Directory Structure**
 
 ```
 project/
@@ -102,24 +102,25 @@ project/
 ```
 
 This structure supports:
-- multi-vendor
-- multi-site
-- scalable templates
-- CI/CD
-- validation
-- safe deployments
+
+- multi-vendor  
+- multi-site  
+- scalable templates  
+- CI/CD  
+- validation  
+- safe deployments  
 
 ---
 
-# **18.3 Data Modeling Strategy**
+# **16.3 Data Modeling Strategy**
 
-Data must be **clean, deterministic, normalized**.
+Data must be clean, deterministic, normalized.
 
 ## **YAML for structured inventory**
-Examples:
 
-**devices.yml**
-```yaml
+Example **devices.yml**:
+
+```
 devices:
   - hostname: leaf01
     os: nxos
@@ -130,11 +131,12 @@ devices:
       lo1: 10.1.0.11/32
 ```
 
+---
+
 ## **CSV for large tables**
 
-Example:
+Example **vlans.csv**:
 
-**vlans.csv**
 ```
 device,vlan_id,name,vni,ip
 leaf01,10,Servers,10100,10.10.10.1/24
@@ -142,16 +144,19 @@ leaf01,20,Users,10200,10.10.20.1/24
 ```
 
 Use CSV when:
+
 - many rows (hundreds/thousands)
 - data comes from Excel/CMDB
 - team edits spreadsheets
+
+---
 
 ## **Overrides**
 Used for one-off device changes.
 
 ---
 
-# **18.4 Template Organization (Production Standards)**
+# **16.4 Template Organization (Production Standards)**
 
 Templates must be:
 
@@ -162,31 +167,31 @@ Templates must be:
 
 ### **Separation of concerns**
 
-- **device_base.j2** → structure  
-- **leaf.j2 / spine.j2** → device roles  
-- **underlay_intf.j2** → underlay  
-- **overlay_leaf_evpn.j2** → EVPN overlay  
-- **macros.j2** → reusable blocks  
+- `device_base.j2` → structure  
+- `leaf.j2` / `spine.j2` → device roles  
+- `underlay_intf.j2` → underlay  
+- `overlay_leaf_evpn.j2` → EVPN overlay  
+- `macros.j2` → reusable blocks  
 
 Avoid giant templates.  
-Small templates = maintainable templates.
+**Small templates = maintainable templates.**
 
 ---
 
-# **18.5 Python Rendering Pipeline (Production-Grade)**
+# **16.5 Python Rendering Pipeline (Production-Grade)**
 
-A real renderer must contain:
+A real renderer must:
 
 1. Load YAML/CSV/JSON/Excel  
-2. Merge data using device hostname  
+2. Merge data using hostname  
 3. Validate required fields  
 4. Register custom filters  
 5. Select template (os/role)  
 6. Render  
 7. Write to build directory  
-8. Optionally push to device or API  
+8. (Optional) Push to device/API  
 
-### **renderer structure:**
+### Example pipeline:
 
 ```python
 env = Environment(
@@ -212,13 +217,13 @@ for dev in devices:
     write(f"build/{dev['hostname']}.cfg", output)
 ```
 
-This is what *real enterprise automation* looks like.
+This is **real-world enterprise automation**.
 
 ---
 
-# **18.6 Validation Pipeline (Critical)**
+# **16.6 Validation Pipeline (Critical)**
 
-Validation is what separates a **safe automation** from a **dangerous one**.
+Validation is what separates a safe automation from a dangerous one.
 
 ### **Check required attributes**
 ```python
@@ -228,17 +233,16 @@ assert 'role' in dev
 ```
 
 ### **Check VLAN IDs**
-```python
+```
 assert 1 <= vlan['id'] <= 4094
 ```
 
 ### **Check VNI ranges**
-```python
+```
 assert 10000 <= vlan['vni'] <= 50000
 ```
 
-### **Check IP classes**
-Use Python ipaddress.
+### **Check IPs using ipaddress module**
 
 ### **Check duplicates**
 ```python
@@ -252,7 +256,7 @@ Validation prevents destructive configs.
 
 ---
 
-# **18.7 Git Workflow (Production Method)**
+# **16.7 Git Workflow (Production Method)**
 
 ### **Branching model**
 ```
@@ -262,31 +266,31 @@ main
 ```
 
 ### **Typical flow**
-
 1. Developer makes change in `feature/vlan-update`  
 2. Commit + push  
 3. CI runs validation + tests  
 4. Reviewer approves PR  
 5. Merge into `dev`  
-6. Render configs in staging environment  
+6. Render configs in staging  
 7. Approve change  
 8. Merge into `main`  
 9. Auto-render + push to production devices  
 
 ---
 
-# **18.8 CI/CD Workflow (Enterprise Grade)**
+# **16.8 CI/CD Workflow (Enterprise Grade)**
 
 Use GitHub Actions or GitLab CI.
 
-### **CI must run:**
+CI must run:
+
 - YAML syntax check  
 - CSV validation  
 - Python unit tests  
 - Jinja render smoke test  
-- Whitespace consistency test (very important)  
+- Whitespace consistency test  
 
-### **Example GitHub Action:**
+### Example GitHub Action:
 
 ```yaml
 name: validate
@@ -308,16 +312,15 @@ CI prevents broken templates from reaching production.
 
 ---
 
-# **18.9 Diff Checking (Before Pushing Config)**
+# **16.9 Diff Checking (Before Pushing Config)**
 
-Before deploying configs to devices:
+Before deploying configs:
 
 ```
 python scripts/diff.py --host leaf01
 ```
 
-Typical **diff.py**:
-
+### Typical diff.py:
 ```python
 import difflib
 running = get_running_config(host)
@@ -335,75 +338,70 @@ If diff is empty → safe to push.
 
 ---
 
-# **18.10 Deployment Workflow (Safe Production Push)**
+# **16.10 Deployment Workflow (Safe Production Push)**
 
-### **Dry-run first**
+### Dry-run first:
 ```
 python scripts/push.py --host leaf01 --dry-run
 ```
 
-### **If safe, push:**
+### If safe, push:
 ```
 python scripts/push.py --host leaf01
 ```
 
-Typical **push.py** logic:
-
+### Typical push logic:
 ```python
 if not dry_run:
     conn.send_config_set(config.splitlines())
 ```
 
 Supports:
-- NX-OS (Netmiko)
-- FortiGate (API)
-- Junos (PyEZ)
-- Palo Alto (REST)
-- EOS (eAPI)
+
+- NX-OS (Netmiko)  
+- FortiGate (API)  
+- Junos (PyEZ)  
+- Palo Alto (REST)  
+- EOS (eAPI)  
 
 ---
 
-# **18.11 Compliance and Drift Detection**
+# **16.11 Compliance and Drift Detection**
 
-A production automation system **must detect drift**.
+A production automation system must detect drift.
 
-### **drift detection example:**
 ```
 python scripts/diff.py --all
 ```
 
-If a device config differs from the generated config:
+If a device config differs from generated config:
 
 - mark device as drifted  
 - alert the team  
 - require remediation  
 
-This keeps network configs aligned with source of truth.
+This ensures configs match the Source of Truth.
 
 ---
 
-# **18.12 Multi-Vendor Strategy**
+# **16.12 Multi-Vendor Strategy**
 
 Production automation must support multiple vendors.
 
-### **Recommended approach:**
-
-- Put templates in folders per vendor:
-```
-templates/nxos/
-templates/eos/
-templates/fortigate/
-templates/junos/
-templates/panos/
-```
-
-- Keep vendor-neutral data in YAML (vlans, VRFs, tenants)
-- Use vendor-specific filters (if needed)
-- Use Python to choose template by OS
+### Recommended approach:
+- Put templates in folders per vendor:  
+  - `templates/nxos/`  
+  - `templates/eos/`  
+  - `templates/fortigate/`  
+  - `templates/junos/`  
+  - `templates/panos/`  
+- Keep vendor-neutral data in YAML  
+- Use vendor-specific filters  
+- Python chooses template by OS  
 
 ---
 
-# **18.13 Production-Ready Features to Add Over Time**
+# **16.13 Production-Ready Features to Add Over Time**
 
 ✔ SNMP/AAA/logging templates  
 ✔ Syslog & telemetry templates  
@@ -416,24 +414,22 @@ templates/panos/
 ✔ Excel integration (pandas)  
 ✔ REST API server for generating configs  
 
-This is the roadmap to full enterprise automation.
+This is the roadmap to **full enterprise automation**.
 
 ---
 
-# **18.14 Summary**
+# **16.14 Summary**
 
 A production-ready automation system must include:
 
-- **Strong data modeling**
-- **Validated YAML/CSV/JSON**
-- **Deterministic, stable templates**
-- **Custom filters**
-- **Inheritance + modular structure**
-- **Automated rendering pipeline**
-- **Dry-run + diff checks**
-- **Safe push to devices**
-- **CI/CD automation**
-- **Compliance + drift detection**
-- **Multi-vendor support**
-
-
+- Strong data modeling  
+- Validated YAML/CSV/JSON  
+- Deterministic, stable templates  
+- Custom filters  
+- Inheritance + modular structure  
+- Automated rendering pipeline  
+- Dry-run + diff checks  
+- Safe push to devices  
+- CI/CD automation  
+- Compliance + drift detection  
+- Multi-vendor support  
