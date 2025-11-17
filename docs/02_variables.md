@@ -1,4 +1,3 @@
-'''
 2.1 What is a Variable?
 
 A variable is a placeholder inside a template.
@@ -6,17 +5,17 @@ It is a value provided by your data (YAML, CSV, Python dictionaries).
 
 Template:
 
-hostname {{ hostname }}
+  hostname {{ hostname }}
 
 
 Data:
 
-hostname: leaf01
+  hostname: leaf01
 
 
 Rendered output:
 
-hostname leaf01
+  hostname leaf01
 
 
 Variables allow templates to become dynamic, meaning one template can produce configuration for many different devices.
@@ -25,7 +24,7 @@ Variables allow templates to become dynamic, meaning one template can produce co
 
 Syntax:
 
-{{ variable_name }}
+  {{ variable_name }}
 
 
 Everything inside the {{ ... }} is evaluated and printed.
@@ -43,26 +42,26 @@ template.render(
 
 Template:
 
-hostname {{ hostname }}
-ip address {{ mgmt_ip }}
+  hostname {{ hostname }}
+  ip address {{ mgmt_ip }}
 
 2.4 Dot Notation vs Bracket Notation
 
 Dot notation:
 
-{{ vlan.id }}
-{{ device.hostname }}
-{{ interface.description }}
+  {{ vlan.id }}
+  {{ device.hostname }}
+  {{ interface.description }}
 
 
 Bracket notation:
 
-{{ vlan['id'] }}
-{{ device['hostname'] }}
-{{ interface['description'] }}
+  {{ vlan['id'] }}
+  {{ device['hostname'] }}
+  {{ interface['description'] }}
 
 2.5 How Dot Notation Works
-{{ vlan.id }}
+  {{ vlan.id }}
 
 
 Jinja checks:
@@ -77,7 +76,7 @@ For YAML → Python dicts, it normally resolves dictionary keys.
 
 Explicit:
 
-{{ vlan['id'] }}
+  {{ vlan['id'] }}
 
 
 Always refers to dictionary key "id".
@@ -88,7 +87,7 @@ Use dot notation in templates, and keep YAML as dictionaries.
 
 Example:
 
-switchport access vlan {{ interface.vlan }}
+  switchport access vlan {{ interface.vlan }}
 
 2.8 Examples of Variables in Network Templates
 VLAN Example
@@ -154,16 +153,16 @@ device:
 
 Template:
 
-hostname {{ device.hostname }}
+  hostname {{ device.hostname }}
 
-interface loopback0
-  ip address {{ device.loopbacks.lo0 }}
+  interface loopback0
+    ip address {{ device.loopbacks.lo0 }}
 
 2.10 Missing Variables and StrictUndefined
 
 Bad behavior (default Jinja):
 
-hostname {{ hostname }}
+  hostname {{ hostname }}
 
 
 Missing variable produces:
@@ -216,4 +215,3 @@ Keep YAML consistent across devices.
 Avoid overly deep nesting.
 
 Validate required variables in Python.
-'''
