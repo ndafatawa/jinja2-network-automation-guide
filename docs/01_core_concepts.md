@@ -22,36 +22,36 @@ Templates allow you to generate many configs from one template.
 
 1.2 What Is Rendering?
 
-Rendering is the process of combining:
-
-  Template (structure)
-
-  Context (data)
-
-To produce:
-
-  Final configuration text
-
-Rendering is simply:
-
-Template + Data → Final Config
-
-
-Example:
-
-Template:
-
-    hostname {{ hostname }}
-
-
-Context:
-
-    hostname: leaf01
-
-
-Rendered output:
-
-    hostname leaf01
+  Rendering is the process of combining:
+  
+    Template (structure)
+  
+    Context (data)
+  
+  To produce:
+  
+    Final configuration text
+  
+  Rendering is simply:
+  
+  Template + Data → Final Config
+  
+  
+  Example:
+  
+  Template:
+  
+      hostname {{ hostname }}
+  
+  
+  Context:
+  
+      hostname: leaf01
+  
+  
+  Rendered output:
+  
+      hostname leaf01
 
 1.3 The Automation Pipeline (Important Mental Model)
 
