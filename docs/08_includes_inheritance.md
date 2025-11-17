@@ -1,278 +1,317 @@
+# **08 – Includes and Template Inheritance in Jinja2**
 
-08 – Includes and Template Inheritance in Jinja2
+This document explains two core Jinja2 features used to build scalable, modular, production-grade network automation templates:
 
-This document explains two of the most important Jinja2 features for building clean, scalable network automation templates:
+- **Includes**
+- **Template inheritance**
 
-Includes
+These two tools allow you to break massive configuration templates into clean, reusable, maintainable building blocks — essential for large network automation projects such as:
 
-Template inheritance
+- VXLAN EVPN data-center fabrics  
+- Multi-vendor core/edge networks  
+- Firewall object and policy generation  
+- Multi-site deployments  
+- Large L2/L3 underlay/overlay designs  
 
-These features allow you to build modular, maintainable configuration templates for large network environments (e.g., multi-vendor fabrics, multi-site projects, VXLAN EVPN deployments, security devices, etc.).
+---
 
-8.1 Why This Matters in Network Automation
+## **8.1 Why This Matters in Network Automation**
 
-In a real project:
+In real production environments:
 
-All switches share common base configuration
+- All switches share **common base config**
+- Leaves share **underlay + overlay VXLAN EVPN**
+- Spines share **RR + underlay**
+- Firewalls share **address-object + policy templates**
+- Routers share **WAN templates**
 
-Leaves share overlay and underlay patterns
+Writing one huge file is not scalable and cannot be reused.
 
-Spines share route-reflector patterns
+**Includes + Inheritance** give you:
 
-Firewalls share address object and policy structures
+- clean structure  
+- reusable building blocks  
+- easy maintenance  
+- less duplication  
+- multi-vendor support  
+- templates that scale to 200+ devices  
 
-Routers share WAN template blocks
+---
 
-Writing a single giant template is not scalable.
-Instead, you break everything into logical, reusable building blocks.
+## **8.2 Includes — “paste another template here”**
 
-Templates become:
+Includes *insert another file* into the current template.
 
-easier to read
+### **Syntax**
 
-easier to test
+```jinja2
+{% include 'path/to/template.j2' %}
+```
 
-easier to extend
+This is exactly like saying:
 
-shared across vendors
+> “Paste the generated output of this small template at this location.”
 
-maintainable over years
+---
 
-Includes and inheritance are how you achieve this.
+## **8.3 Typical Use Cases for Includes**
 
-8.2 Includes — “paste another template here”
+### **1. Common base configuration**
 
-Includes allow you to pull another file into your current template exactly where you need it.
-
-Syntax:
-
-{% include 'path/to/partial_template.j2' %}
-
-
-Think of include as:
-
-"Insert the output of this other template at this exact location."
-
-This is similar to pasting a reusable piece of configuration text.
-
-8.3 Typical Use Cases for Includes
-1. Common base config for all switches
+```jinja2
 {% include 'nxos/base_common.j2' %}
+```
 
+Contains vendor baseline:
 
-Examples inside base_common:
-
+```
 feature interface-vlan
 feature ospf
 no ip domain-lookup
+logging server ...
+```
 
-2. Underlay interface configuration
+---
+
+### **2. Underlay interfaces**
+
+```jinja2
 {% include 'nxos/underlay_intf.j2' %}
+```
 
-3. Underlay OSPF config
+---
+
+### **3. Underlay OSPF**
+
+```jinja2
 {% include 'nxos/underlay_ospf.j2' %}
+```
 
-4. Overlay EVPN config
+---
+
+### **4. VXLAN/EVPN overlay**
+
+```jinja2
 {% include 'nxos/overlay_leaf_evpn.j2' %}
+```
 
-5. Vendor-specific optional blocks
+---
+
+### **5. Vendor-specific logic**
+
+```jinja2
 {% if os == 'eos' %}
 {% include 'eos/vlan_template.j2' %}
 {% endif %}
+```
 
-8.4 Template Inheritance — “page skeleton + override sections”
+---
 
-Inheritance is the most powerful Jinja2 structuring tool.
+## **8.4 Template Inheritance — “skeleton + replaceable blocks”**
 
-It allows you to define:
+Inheritance is the most powerful Jinja2 structuring technique.
 
-a base template (the master layout)
+It lets you:
 
-child templates that extend the base
+- create a **base template**
+- define named **blocks**
+- create **child templates** that override those blocks
 
-blocks inside the base that child templates override
+This is how big automation projects stay clean and maintainable.
 
-This is exactly how web frameworks build pages — and it works perfectly for network configs.
+---
 
-8.5 Base Template Example (device_base.j2)
+## **8.5 Base Template Example (device_base.j2)**
 
-This is the skeleton for all switches:
-
-{# templates/nxos/device_base.j2 #}
-
+```jinja2
 hostname {{ hostname }}
 
 {% block base %}
-{# base config goes here #}
+{# baseline config goes here #}
 {% endblock %}
 
 {% block underlay %}
-{# underlay config here #}
+{# interface + OSPF #}
 {% endblock %}
 
 {% block overlay %}
-{# overlay (EVPN, VXLAN) #}
+{# VXLAN EVPN #}
 {% endblock %}
 
 {% block services %}
-{# SNMP, AAA, logging, NTP #}
+{# SNMP, NTP, AAA, syslog #}
 {% endblock %}
+```
 
+This file defines the **layout** of all device configs.
 
-It defines named blocks that child templates can replace.
+---
 
-8.6 Child Template Example (leaf.j2)
+## **8.6 Child Template Example (leaf.j2)**
+
+```jinja2
 {% extends 'nxos/device_base.j2' %}
 
 {% block base %}
-{% include 'nxos/base_common.j2' %}
+  {% include 'nxos/base_common.j2' %}
 {% endblock %}
 
 {% block underlay %}
-{% include 'nxos/underlay_intf.j2' %}
-{% include 'nxos/underlay_ospf.j2' %}
+  {% include 'nxos/underlay_intf.j2' %}
+  {% include 'nxos/underlay_ospf.j2' %}
 {% endblock %}
 
 {% block overlay %}
-{% include 'nxos/overlay_leaf_evpn.j2' %}
+  {% include 'nxos/overlay_leaf_evpn.j2' %}
 {% endblock %}
+```
 
+This produces:
 
-This gives you:
+- the same base skeleton  
+- underlay + overlay inserted automatically  
+- leaf-specific logic  
 
-a clean structure
+---
 
-predictable layout
+## **8.7 Why Use Inheritance Instead of Only Includes?**
 
-reusable building blocks
+### **Includes only → messy**
 
-Child templates do not recreate everything; they simply fill in the blocks.
+Each device type manually includes 5–10 templates.  
+Harder to maintain.
 
-8.7 Why Use Inheritance Instead of Many Includes?
+### **Inheritance → clean**
 
-Inheritance is better when:
+Base defines the structure:
 
-you want a standard structure for all devices
+```
+base
+underlay
+overlay
+services
+```
 
-you want different device types to override specific areas
+Each device type just fills in blocks.
 
-you want clean separation (base → underlay → overlay → services)
+This scales to:
 
-Before:
+- hundreds of devices  
+- multiple vendors  
+- years of maintenance  
 
-leaf.j2 → include 5 things
-spine.j2 → include 5 other things
-edge.j2 → include 3 things
+---
 
+## **8.8 Template Selection in Python (render.py)**
 
-Hard to manage.
-
-After using inheritance:
-
-device_base.j2 → defines structure
-leaf.j2        → fills blocks
-spine.j2       → fills blocks
-edge.j2        → fills blocks
-
-
-Clean, predictable, scalable.
-
-8.8 How Templates Are Selected (from render.py)
-
-Python chooses which template to render based on device role:
-
-if dev['role'] == 'leaf':
-    template = 'nxos/leaf.j2'
+```python
+if dev["role"] == "leaf":
+    template = "nxos/leaf.j2"
 else:
-    template = 'nxos/spine.j2'
+    template = "nxos/spine.j2"
+```
 
+This produces:
 
-This makes large network generation easy:
+- **leaf.j2 → full underlay + overlay**
+- **spine.j2 → underlay + RR**
+- **border_leaf.j2 → adds firewall or L3 handoff**
+- **edge.j2 → WAN/MPLS templates**
 
-leaf.j2 → extends base + overlay + underlay  
-spine.j2 → extends base + underlay only  
+Automatic and scalable.
 
-8.9 Nested Includes
+---
 
-Includes can also include other includes:
+## **8.9 Nested Includes**
 
+Includes can contain includes:
+
+```
 leaf.j2
  ├── base_common.j2
  ├── underlay_intf.j2
  ├── underlay_ospf.j2
  └── overlay_leaf_evpn.j2
-      └── includes macros.j2
+      └── macros.j2
+```
 
+This keeps the entire repo modular and readable.
 
-This means your project can grow without losing readability.
+---
 
-8.10 Include vs. Macro vs. Inheritance (Summary)
-Feature	Purpose	Best Use Case
-Include	Insert another file	Insert static or generic template blocks
-Macro	Reusable template function	SVIs, NVE members, interfaces, firewall rules
-Inheritance	Ensure clean structure	Base → leaf → spine → firewall → etc.
+## **8.10 Include vs Macro vs Inheritance (Comparison)**
 
-Together, they form the backbone of a maintainable Jinja2 automation project.
+| Feature | Purpose | Best Use Case |
+|--------|----------|----------------|
+| **Include** | Paste another template | OSPF block, BGP block, base config |
+| **Macro** | Reusable config function | SVI, P2P links, NVE members, FG objects |
+| **Inheritance** | Global structure | Base → leaf/spine/border templates |
 
-8.11 Real Network Example: NX-OS Leaf Config Assembly
+All three work together.
 
-Using the building blocks:
+---
 
-device_base.j2
+## **8.11 Real Example: How an NX-OS Leaf Config Is Built**
 
-leaf.j2
+**device_base.j2**
+- defines skeleton
 
-base_common.j2
+**leaf.j2**
+- extends skeleton  
+- adds underlay + overlay
 
-underlay_intf.j2
+**base_common.j2**
+- features, mgmt, system defaults
 
-underlay_ospf.j2
+**underlay_intf.j2**
+- Ethernet interfaces, IPs
 
-overlay_leaf_evpn.j2
+**underlay_ospf.j2**
+- OSPF Underlay
 
-The final rendered leaf config is assembled like this:
+**overlay_leaf_evpn.j2**
+- VXLAN NVE, VNIs, Anycast GW
 
+### Final result:
+
+```
 hostname LEAF1
 
-### BASE ###
-(feature commands, mgmt, system)
+! BASE
+feature interface-vlan
+feature ospf
+...
 
-### UNDERLAY ###
+! UNDERLAY
 interface e1/1
-  ip address...
+  ip address 10.1.1.0/31
 interface e1/2
-  ip address...
+  ip address 10.1.1.2/31
 router ospf UNDERLAY
-  router-id...
+  router-id 10.10.10.1
 
-### OVERLAY ###
+! OVERLAY
 interface nve1
+  host-reachability protocol bgp
   source-interface loopback1
-  member vni ...
-router bgp 65001
-  l2vpn evpn...
+  member vni 10100
+...
+```
 
+Leaves, spines, borders all share the **same skeleton**.
 
-With different blocks depending on role:
+---
 
-leaf → full VXLAN EVPN
+## **8.12 Best Practices for Includes & Inheritance**
 
-spine → only RR + underlay
+- Use **inheritance** for overall layout (base → leaf/spine)
+- Use **include** for reusable blocks (OSPF, NVE, base config)
+- Use **macros** for parameterized reusable sections (SVIs, P2P)
+- Keep templates small and focused
+- Push logic to Python — keep templates readable
+- Use `StrictUndefined` to prevent missing values
+- Store vendor-specific templates in folders:  
+  `nxos/`, `eos/`, `fortigate/`, `junos/`
 
-border leaf → optional blocks
+---
 
-8.12 Best Practices for Using Includes and Inheritance
-
-Use inheritance for overall config layout.
-
-Use include for large reusable pieces (underlay, base).
-
-Use macros for parameterized reusable blocks (SVIs, interfaces).
-
-Keep templates small and readable.
-
-Avoid putting business logic in templates. Push logic to Python.
-
-Use StrictUndefined to catch missing values.
-
-Use directories per vendor (nxos, eos, fortigate, junos, etc.).
