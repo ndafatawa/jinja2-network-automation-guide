@@ -1,1 +1,8 @@
+router ospf UNDERLAY
+  router-id {{ loopbacks.lo0 | ipaddr('address') }}
+
+{% for link in underlay_links if link.local == hostname %}
+interface {{ link.intf }}
+  ip ospf area 0.0.0.0
+{% endfor %}
 
