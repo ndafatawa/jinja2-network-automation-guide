@@ -1,188 +1,262 @@
-10 – Expressions in Jinja2 (Math, Logic, Comparisons, Membership)
+# **10 – Expressions in Jinja2 (Math, Logic, Comparisons, Membership)**
 
-Expressions allow you to perform simple logic or transformations inside a Jinja2 template.
-They are used for generating dynamic network configuration such as VNI calculations, structured lists, conditional interface config, VLAN ranges, etc.
+Expressions allow you to perform simple logic, arithmetic, comparisons, and string manipulation inside a Jinja2 template.  
+They are extremely useful in network automation for generating dynamic values such as VNIs, route-targets, loopback IPs, VLAN lists, ACL rules, and conditional configuration.
 
-10.1 What Are Expressions?
+Expressions appear inside:
 
-Expressions are pieces of logic that evaluate to a value.
+- **Variables**: `{{ ... }}`
+- **If-statements**: `{% if ... %}`
+- **Loops**: `{% for ... %}`
+
+---
+
+# **10.1 What Are Expressions?**
+
+Expressions *evaluate to a value*.
 
 Examples:
 
+```jinja2
 {{ vlan.id + 100 }}
 {{ intf.name | upper }}
 {{ ip_list | length }}
 {{ v.id in allowed_vlans }}
+```
 
+Expressions provide intelligence inside templates without becoming real programming logic.
 
-Expressions appear inside:
+---
 
-variables ({{ ... }})
+# **10.2 Categories of Expressions**
 
-conditions ({% if ... %})
+Jinja2 supports several expression types:
 
-loops ({% for ... in ... %})
+- Math
+- Comparisons
+- Boolean logic
+- Membership (`in`)
+- Length
+- String operations
+- Combined/complex expressions
 
-10.2 Categories of Jinja2 Expressions
+Each category has real network examples below.
 
-Expressions fall into:
+---
 
-Math
-
-Comparisons
-
-Boolean logic
-
-Membership (in)
-
-Length
-
-String manipulation
-
-Combined/complex expressions
-
-Each category is shown below with network examples.
-
-10.3 Math Expressions
+# **10.3 Math Expressions**
 
 Supported operators:
 
-Operator	Meaning
-+	addition
--	subtraction
-*	multiplication
-/	division
-//	integer division
-%	modulo
-Example — Derive VNI from VLAN ID
+| Operator | Meaning |
+|----------|---------|
+| `+` | addition |
+| `-` | subtraction |
+| `*` | multiplication |
+| `/` | division |
+| `//` | integer division |
+| `%` | modulo |
+
+### **Example — Derive VNI automatically from VLAN ID**
+
+```jinja2
 vn-segment {{ vlan.id + 10000 }}
+```
 
-Example — Auto-generate loopback IP
+### **Example — Auto-generate loopback IP**
+
+```jinja2
 ip address 10.255.{{ loopback_id }}.{{ device_id }}
+```
 
-Example — Create numeric BGP passwords
+### **Example — Generate numeric BGP passwords**
+
+```jinja2
 password 9 {{ asn * 12345 }}
+```
 
-10.4 Comparison Expressions
+---
 
-Used in if statements.
+# **10.4 Comparison Expressions**
 
-Operator	Meaning
-==	equal
-!=	not equal
-<	less than
-<=	less or equal
->	greater than
->=	greater or equal
-Example — Multicast vs BGP replication
+Used heavily in `{% if %}` blocks.
+
+| Operator | Meaning |
+|----------|---------|
+| `==` | equal |
+| `!=` | not equal |
+| `<` | less than |
+| `<=` | less or equal |
+| `>` | greater than |
+| `>=` | greater or equal |
+
+### **Example — Replication mode decision**
+
+```jinja2
 {% if fabric.replication == 'multicast' %}
   mcast-group {{ vlan.mcast_group }}
 {% else %}
   ingress-replication protocol bgp
 {% endif %}
+```
 
-Example — Shut down unused ports
+### **Example — Shutdown inactive ports**
+
+```jinja2
 {% if intf.active == false %}
   shutdown
 {% endif %}
+```
 
-10.5 Boolean Logic Expressions
-Operator	Meaning
-and	both must be true
-or	at least one true
-not	negation
-Example — Configure loopback only on leaf with IP defined
+---
+
+# **10.5 Boolean Logic**
+
+| Operator | Meaning |
+|----------|---------|
+| `and` | both true |
+| `or` | at least one true |
+| `not` | negation |
+
+### **Example — Configure loopback only on leaf & with IP defined**
+
+```jinja2
 {% if role == 'leaf' and loopbacks.lo1_ip is defined %}
 interface loopback1
   ip address {{ loopbacks.lo1_ip }}/32
 {% endif %}
+```
 
-Example — Apply ACL on firewalls or border leaves
+### **Example — Apply ACL on firewalls or border leaves**
+
+```jinja2
 {% if role == 'firewall' or role == 'border-leaf' %}
   < ACL BLOCK >
 {% endif %}
+```
 
-10.6 Membership Expressions (in)
+---
 
-Used to check list membership.
+# **10.6 Membership Expressions (`in`)**
 
-Example — Allow only permitted VLANs on trunk
+Used to check if an item exists in a list.
+
+### **Example — Allow only permitted VLANs on trunk**
+
+```jinja2
 {% if vlan.id in allowed_vlans %}
   switchport trunk allowed vlan add {{ vlan.id }}
 {% endif %}
+```
 
-Example — Check for feature enablement
+### **Example — Enable feature only if listed**
+
+```jinja2
 {% if 'ospf' in features %}
   feature ospf
 {% endif %}
+```
 
-10.7 Length Expressions
+---
 
-| length returns size of a list or string.
+# **10.7 Length Expressions**
 
-Example — Count VLANs
+Use `|length` to count items.
+
+### **Example — Count VLANs**
+
+```jinja2
 # VLAN count: {{ vlans | length }}
+```
 
-Example — Error if no VLANs
+### **Example — Detect missing VLAN definitions**
+
+```jinja2
 {% if vlans | length == 0 %}
 # ERROR: No VLANs defined
 {% endif %}
+```
 
-10.8 String Expressions
+---
 
-Common functions:
+# **10.8 String Expressions**
 
-'abc' in x → substring check
+Common string tools:
 
-x | upper → uppercase
+- `'abc' in x` → substring check  
+- `x | upper` → uppercase  
+- `x | replace(' ','_')` → substitution  
+- `x ~ y` → concatenation  
 
-x | replace(' ','_') → substitute
+### **Example — Construct hostname**
 
-x ~ y → concatenate
-
-Example — Construct hostname
+```jinja2
 hostname {{ site | upper }}-{{ device_id }}
+```
 
-Example — Generate interface names
+### **Example — Generate interface names**
+
+```jinja2
 interface Ethernet{{ leaf_id }}/{{ port }}
+```
 
-10.9 Combined Expressions (Real Network Examples)
-Example — BGP RR cluster-ID
+---
+
+# **10.9 Combined Expressions (Real Network Examples)**
+
+### **Example — BGP RR cluster-ID**
+
+```jinja2
 cluster-id {{ fabric.asn * 2 + 1 }}
+```
 
-Example — Auto-generate multicast groups
+### **Example — Auto-generate multicast groups**
+
+```jinja2
 mcast-group 239.1.{{ vlan.id // 256 }}.{{ vlan.id % 256 }}
+```
 
-Example — Detect remote leaf from hostname
+### **Example — Detect remote leafs from hostname**
+
+```jinja2
 {% if hostname.startswith('LEAF') and hostname[-1] | int > 20 %}
-  # remote leaf
+# remote leaf
 {% endif %}
+```
 
-10.10 Expressions Mixed With Filters
-Example — Trunk VLAN formatting
+---
+
+# **10.10 Expressions Mixed With Filters**
+
+Filters + expressions = extremely powerful.
+
+### **Example — Clean trunk VLAN formatting**
+
+```jinja2
 switchport trunk allowed vlan {{ intf.allowed_vlans | unique | sort | join(',') }}
-
+```
 
 Pipeline:
 
-list → unique
+```
+list → unique → sort → join → printed
+```
 
-unique → sort
+Deterministic NX-OS output every time.
 
-sort → join
+---
 
-Produce stable NX-OS output.
+# **10.11 Best Practices for Expressions**
 
-10.11 Best Practices
+- Keep expressions short.
+- Move complex logic to Python, not templates.
+- Use filters for formatting.
+- Avoid heavy nested expressions.
+- Always ensure output is deterministic.
+- Test expressions across multiple device types.
 
-Keep expressions short.
+---
 
-Push complex logic to Python.
+Expressions give your templates intelligence without making them complex.  
+Used correctly, they allow simple YAML/CSV data to generate highly dynamic network configurations.
 
-Use filters for transformations.
-
-Avoid nested expressions.
-
-Ensure deterministic output.
-
-Test expressions on multiple devices.
